@@ -82,7 +82,6 @@ class Settings(BaseSettings):
     snowflake_admin_user: str | None = None
     snowflake_admin_password: SecretStr | None = None
     snowflake_admin_role: str = "ACCOUNTADMIN"
-    snowflake_analyst_password: SecretStr | None = None
 
     @field_validator("frontend_origins", mode="before")
     @classmethod

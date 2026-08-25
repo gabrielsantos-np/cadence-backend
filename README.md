@@ -141,8 +141,7 @@ address"* error, because Python reads `[...]` as an IPv6 literal.
 SNOWFLAKE_ACCOUNT=<org>-<account>
 SNOWFLAKE_ADMIN_USER=...
 SNOWFLAKE_ADMIN_PASSWORD=...
-SNOWFLAKE_ANALYST_PASSWORD=<choose one>
-SNOWFLAKE_PASSWORD=<the same value>
+SNOWFLAKE_PASSWORD=<choose one — set on the user, and used to connect>
 
 make snowflake-setup     # database, warehouse, read-only role, analyst login, data
 make snowflake-check     # prove the boundary holds

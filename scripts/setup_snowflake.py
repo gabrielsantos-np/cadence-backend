@@ -68,9 +68,12 @@ def main() -> None:
     role = ident(settings.snowflake_role, "SNOWFLAKE_ROLE")
     analyst_user = ident(settings.snowflake_user or "", "SNOWFLAKE_USER")
 
-    if settings.snowflake_analyst_password is None:
-        sys.exit("SNOWFLAKE_ANALYST_PASSWORD is not set. Choose one and add it to .env.")
-    analyst_password = settings.snowflake_analyst_password.get_secret_value()
+    # The same value the service authenticates with: this script sets the
+    # password, the analyst connects with it. One variable, so the two cannot
+    # drift apart and leave the analyst unable to log in.
+    if settings.snowflake_password is None:
+        sys.exit("SNOWFLAKE_PASSWORD is not set. Choose one and add it to .env.")
+    analyst_password = settings.snowflake_password.get_secret_value()
 
     connection = snowflake.connector.connect(**settings.snowflake_admin_connect_args())
     cursor = connection.cursor()
