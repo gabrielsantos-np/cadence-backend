@@ -1,0 +1,45 @@
+[project]
+name = "cadence-backend"
+version = "0.1.0"
+description = "Cadence API — the Python backend for the Cadence AI market analyst."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi[standard]>=0.128.8",
+    "httpx>=0.28.1",
+    "openai>=3.3.1",
+    "pydantic-settings>=2.15.0",
+    "snowflake-connector-python>=4.7.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Verbatim prose the model reads: the schema context, the research notes and
+# the analyst prompts. The exact wording and layout are the contract with the
+# model, so rewrapping them to satisfy a line-length rule would change
+# behaviour.
+"src/cadence_backend/sources/market_schema.py" = ["E501"]
+"src/cadence_backend/sources/notes_data.py" = ["E501"]
+"src/cadence_backend/analyst/prompts.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.4",
+]
