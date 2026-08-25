@@ -31,6 +31,15 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SNOWFLAKE_DATA = ROOT / "data" / "snowflake"
 SEED = ROOT / "data" / "seed_data.sql"
 
+#: Bellweather's own systems, loaded alongside the market data as separate
+#: schemas in the same database. One Snowflake account means the analyst can
+#: join across them, which is the whole point — they are one source, not three.
+#: Each entry is (schema, ddl file, seed file), applied in order.
+INTERNAL_SCHEMAS = (
+    ("FINANCE", "finance_schema.sql", "finance_seed.sql"),
+    ("SUPPORT", "support_schema.sql", "support_seed.sql"),
+)
+
 STATEMENT_TIMEOUT_SECONDS = 15
 
 # Identifiers are interpolated into DDL, so they are constrained rather than
@@ -57,6 +66,14 @@ def main() -> None:
         action="store_true",
         help="Create roles and grants only; do not reload schema or seed data.",
     )
+    # data/snowflake/schema.sql uses plain CREATE TABLE, so re-applying it to a
+    # loaded MARKET fails on "already exists". This is the additive path: add
+    # the internal schemas to an account that already has the market data.
+    parser.add_argument(
+        "--only-internal",
+        action="store_true",
+        help="Load only the FINANCE and SUPPORT schemas; leave MARKET untouched.",
+    )
     args = parser.parse_args()
 
     from cadence_backend.core.config import get_settings
@@ -67,6 +84,7 @@ def main() -> None:
     warehouse = ident(settings.snowflake_warehouse, "SNOWFLAKE_WAREHOUSE")
     role = ident(settings.snowflake_role, "SNOWFLAKE_ROLE")
     analyst_user = ident(settings.snowflake_user or "", "SNOWFLAKE_USER")
+    all_schemas = (schema, *(name for name, _, _ in INTERNAL_SCHEMAS))
 
     # The same value the service authenticates with: this script sets the
     # password, the analyst connects with it. One variable, so the two cannot
@@ -90,6 +108,8 @@ def main() -> None:
         )
         run(cursor, f"CREATE DATABASE IF NOT EXISTS {database}")
         run(cursor, f"CREATE SCHEMA IF NOT EXISTS {database}.{schema}")
+        for internal, _, _ in INTERNAL_SCHEMAS:
+            run(cursor, f"CREATE SCHEMA IF NOT EXISTS {database}.{internal}")
         # A statement timeout on the warehouse applies even if a session
         # forgets to set one — the closest thing to Postgres's role-level
         # statement_timeout.
@@ -103,12 +123,20 @@ def main() -> None:
         run(cursor, f"CREATE ROLE IF NOT EXISTS {role}")
         run(cursor, f"GRANT USAGE ON WAREHOUSE {warehouse} TO ROLE {role}")
         run(cursor, f"GRANT USAGE ON DATABASE {database} TO ROLE {role}")
-        run(cursor, f"GRANT USAGE ON SCHEMA {database}.{schema} TO ROLE {role}")
-        # SELECT and nothing else. No INSERT, no UPDATE, no CREATE, no
-        # OWNERSHIP: writes fail as a privilege error, not as a regex match.
-        for on in ("TABLES", "VIEWS"):
-            run(cursor, f"GRANT SELECT ON ALL {on} IN SCHEMA {database}.{schema} TO ROLE {role}")
-            run(cursor, f"GRANT SELECT ON FUTURE {on} IN SCHEMA {database}.{schema} TO ROLE {role}")
+        # SELECT and nothing else, on every schema the analyst may read. No
+        # INSERT, no UPDATE, no CREATE, no OWNERSHIP: writes fail as a
+        # privilege error, not as a regex match.
+        for target in all_schemas:
+            run(cursor, f"GRANT USAGE ON SCHEMA {database}.{target} TO ROLE {role}")
+            for on in ("TABLES", "VIEWS"):
+                run(
+                    cursor,
+                    f"GRANT SELECT ON ALL {on} IN SCHEMA {database}.{target} TO ROLE {role}",
+                )
+                run(
+                    cursor,
+                    f"GRANT SELECT ON FUTURE {on} IN SCHEMA {database}.{target} TO ROLE {role}",
+                )
 
         print("\ndedicated analyst login")
         cursor.execute(f"SHOW USERS LIKE '{analyst_user}'")
@@ -160,32 +188,43 @@ def main() -> None:
             print("\ndataset")
             run(cursor, f"USE DATABASE {database}")
             run(cursor, f"USE SCHEMA {schema}")
-            for path in (SNOWFLAKE_DATA / "schema.sql", SEED):
+            files = [] if args.only_internal else [SNOWFLAKE_DATA / "schema.sql", SEED]
+            for _, ddl, internal_seed in INTERNAL_SCHEMAS:
+                files += [SNOWFLAKE_DATA / ddl, SNOWFLAKE_DATA / internal_seed]
+            # The internal files carry their own USE SCHEMA, so the market load
+            # has to come first while MARKET is still current.
+            run(cursor, f"USE SCHEMA {schema}", quiet=True)
+            for path in files:
                 sql = path.read_text()
                 print(f"  applying {path.name} ({len(sql):,} bytes) ...", end=" ", flush=True)
                 for _ in connection.execute_string(sql):
                     pass
                 print("ok")
             # New objects need the grant re-applied; FUTURE covers later ones.
-            for on in ("TABLES", "VIEWS"):
-                run(
-                    cursor,
-                    f"GRANT SELECT ON ALL {on} IN SCHEMA {database}.{schema} TO ROLE {role}",
-                    quiet=True,
-                )
+            for target in all_schemas:
+                for on in ("TABLES", "VIEWS"):
+                    run(
+                        cursor,
+                        f"GRANT SELECT ON ALL {on} IN SCHEMA {database}.{target} TO ROLE {role}",
+                        quiet=True,
+                    )
 
         print("\nverification")
-        cursor.execute(
-            "SELECT COUNT(*) FROM information_schema.tables "
-            f"WHERE table_schema = '{schema}' AND table_type = 'BASE TABLE'"
-        )
-        print(f"  tables  : {cursor.fetchone()[0]}")
-        cursor.execute(
-            f"SELECT COUNT(*) FROM information_schema.views WHERE table_schema = '{schema}'"
-        )
-        print(f"  views   : {cursor.fetchone()[0]}")
+        for target in all_schemas:
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                f"WHERE table_schema = '{target}' AND table_type = 'BASE TABLE'"
+            )
+            tables = cursor.fetchone()[0]
+            cursor.execute(
+                f"SELECT COUNT(*) FROM information_schema.views WHERE table_schema = '{target}'"
+            )
+            print(f"  {target:9}: {tables} tables, {cursor.fetchone()[0]} views")
         cursor.execute(f"SELECT COUNT(*) FROM {database}.{schema}.streaming_service")
-        print(f"  services: {cursor.fetchone()[0]}")
+        print(f"  services : {cursor.fetchone()[0]} (market covers all of them)")
+        if not args.skip_data:
+            cursor.execute(f"SELECT COUNT(DISTINCT service_id) FROM {database}.FINANCE.gl_entry")
+            print(f"  internal : {cursor.fetchone()[0]} (finance and support cover only ours)")
         print("\nDone. Set MARKET_SOURCE=snowflake in .env to use it.")
     finally:
         cursor.close()

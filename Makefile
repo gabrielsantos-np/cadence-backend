@@ -4,7 +4,7 @@
 #   make test    run the test suite
 #   make check   everything CI would run
 
-.PHONY: install dev test lint fmt check db-up db-down db-reset db-logs db-load snowflake-setup snowflake-check
+.PHONY: install dev test lint fmt check db-up db-down db-reset db-logs db-load snowflake-setup snowflake-internal snowflake-check
 
 PORT ?= 8000
 
@@ -64,6 +64,10 @@ db-load:
 # analyst login, then load the dataset. Needs the SNOWFLAKE_ADMIN_* settings.
 snowflake-setup:
 	uv run python scripts/setup_snowflake.py
+
+# Add the FINANCE and SUPPORT schemas to an account that already has MARKET.
+snowflake-internal:
+	uv run python scripts/setup_snowflake.py --only-internal
 
 # Re-run the grants without reloading data.
 snowflake-grants:
