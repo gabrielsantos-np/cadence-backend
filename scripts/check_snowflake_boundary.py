@@ -62,6 +62,20 @@ def main() -> None:
         if not result.startswith("ALLOWED"):
             failures += 1
 
+        result = attempt(
+            cursor,
+            f"SELECT COUNT(*) FROM {database}.FINANCE.gl_entry "
+            f"JOIN {database}.MARKET.streaming_service USING (service_id)",
+        )
+        print(f"  join across schemas  : {result}")
+        if not result.startswith("ALLOWED"):
+            failures += 1
+
+        result = attempt(cursor, f"SELECT COUNT(*) FROM {database}.SUPPORT.v_support_monthly")
+        print(f"  read support view    : {result}")
+        if not result.startswith("ALLOWED"):
+            failures += 1
+
         print("\nMUST FAIL")
         escalations = [
             (
@@ -72,6 +86,8 @@ def main() -> None:
             ("delete rows", f"DELETE FROM {database}.{schema}.streaming_service"),
             ("create a table", f"CREATE TABLE {database}.{schema}.pwned (x INT)"),
             ("drop a table", f"DROP TABLE {database}.{schema}.streaming_service"),
+            ("write to finance", f"INSERT INTO {database}.FINANCE.gl_entry(entry_id) VALUES (0)"),
+            ("delete from support", f"DELETE FROM {database}.SUPPORT.ticket"),
             ("switch to admin", "USE ROLE ACCOUNTADMIN"),
             ("read account metadata", "SELECT COUNT(*) FROM SNOWFLAKE.ACCOUNT_USAGE.USERS"),
             ("create a role", "CREATE ROLE escalated"),
