@@ -92,10 +92,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(conversations.router)
 
     logger.info(
-        "%s %s starting (environment=%s, analyst=not-implemented)",
+        "%s %s starting (environment=%s, market_source=%s, analyst=%s)",
         settings.app_name,
         settings.app_version,
         settings.environment,
+        settings.market_source,
+        "ready" if settings.has_openrouter_key else "no API key",
     )
     return app
 
