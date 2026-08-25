@@ -1,0 +1,47 @@
+# Postgres for the Cadence backend.
+#
+#   make db-up      start it
+#   make db-reset   throw it away and reload the dataset from scratch
+#
+# The backend owns the database now; the frontend is only a browser client.
+# Port 5432 is the same one the Next.js app used, so anything still reading
+# DATABASE_URL directly keeps working during the migration.
+#
+# The three SQL files are mounted into the Postgres init directory and run in
+# name order, once, the first time the volume is created.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cadence-backend-db
+    environment:
+      POSTGRES_USER: postgres
+      # Local development only — this database holds nothing but synthetic data.
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: market
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./data/seed_data.sql:/docker-entrypoint-initdb.d/02-seed_data.sql:ro
+      - ./data/app_schema.sql:/docker-entrypoint-initdb.d/03-app_schema.sql:ro
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d market"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:5
+    container_name: cadence-backend-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
