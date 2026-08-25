@@ -87,6 +87,15 @@ for browsing the dataset.
 `data_dictionary.md`. Read the dictionary before writing queries — it documents
 the three grains, the bundled-revenue trap and the known data gaps.
 
+`data/snowflake/` also holds two schemas that exist **only** on Snowflake:
+`finance_*.sql` and `support_*.sql`. They are Bellweather Media's own general
+ledger and helpdesk, covering only the two services it operates — Tidepool and
+Harborlight — while `MARKET` is a bought-in panel covering all ten. That
+asymmetry is the point: it is what a client warehouse actually looks like, and
+the traps it creates (a coverage subset, an April fiscal year, dollars against
+millions, and two disagreeing measures of revenue) are documented in
+`sources/internal_schema.py`.
+
 `data/snowflake/schema.sql` is **generated** from `data/schema.sql` by
 `scripts/translate_schema.py`; edit the Postgres file and regenerate rather than
 editing it directly. The translation is not cosmetic — Snowflake rejects `CHECK`
@@ -148,7 +157,11 @@ make snowflake-check     # prove the boundary holds
 ```
 
 Then set `MARKET_SOURCE=snowflake` and restart. Other targets:
-`make snowflake-grants` re-applies grants without reloading data.
+`make snowflake-grants` re-applies grants without reloading data, and
+`make snowflake-internal` adds the `FINANCE` and `SUPPORT` schemas to an account
+that already holds `MARKET` — `data/snowflake/schema.sql` uses plain
+`CREATE TABLE`, so re-running the full setup over a loaded account fails on
+"already exists" rather than reloading it.
 
 The analyst login is created as `TYPE = LEGACY_SERVICE`: Snowflake enforces MFA
 on password sign-ins for human users, which a background service cannot satisfy,
@@ -281,6 +294,7 @@ src/cadence_backend/
 │   ├── types.py            SqlSource / DocumentSource
 │   ├── market.py           the SQL source, connecting as analyst_ro
 │   ├── market_schema.py    curated schema context for the prompt
+│   ├── internal_schema.py  FINANCE and SUPPORT context — Snowflake only
 │   └── notes.py            document source over the research notes
 ├── conversations/store.py  persistence for app.conversation / app.message
 ├── db/
@@ -299,8 +313,15 @@ scripts/
 
 `sources/` also holds `snowflake.py` and `snowflake_schema.py`, used when
 `MARKET_SOURCE=snowflake`. The Snowflake schema context reuses the Postgres one
-verbatim and appends dialect notes — the grains and traps are facts about the
-data, not the engine, and duplicating them is how the two drift.
+verbatim, appends the internal-schema context and then the dialect notes — the
+grains and traps are facts about the data, not the engine, and duplicating them
+is how the two drift.
+
+`MARKET`, `FINANCE` and `SUPPORT` are registered as **one** `SqlSource`, not
+three. They share a Snowflake database, so a single query can join across them;
+registering them separately would switch on the multi-source rule in
+`prompts.py`, which tells the model that sources cannot be joined — true of
+Postgres against Snowflake, false of three schemas in one account.
 
 ## Security
 
