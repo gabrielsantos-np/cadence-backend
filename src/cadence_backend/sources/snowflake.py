@@ -66,13 +66,15 @@ def _query_blocking(sql: str) -> SqlOutcome:
 class SnowflakeSource:
     id = "market"
     kind: Literal["sql"] = "sql"
-    name = "Market dataset"
+    name = "Bellweather warehouse"
     description = (
-        "The US streaming-subscription market: services, genres, monthly subscribers, "
-        "genre engagement, retention cohorts, annual revenue, and market events, "
-        "Jan 2024 - Jun 2026."
+        "Three schemas in one Snowflake database, joinable in a single query. MARKET: "
+        "the bought-in panel for the whole US streaming-subscription market — services, "
+        "genres, monthly subscribers, genre engagement, retention cohorts, annual revenue "
+        "and market events, Jan 2024 - Jun 2026. FINANCE and SUPPORT: Bellweather's own "
+        "ledger and helpdesk, covering only the two services it operates."
     )
-    trace_label = "Queried market dataset (Snowflake)"
+    trace_label = "Queried Snowflake warehouse"
     schema_context = SNOWFLAKE_SCHEMA_CONTEXT
 
     async def query(self, sql: str) -> SqlOutcome:
