@@ -155,9 +155,7 @@ REWRITES: list[tuple[str, str, str]] = [
 # The whole clause has to go: stripping only the CHECK would leave an orphaned
 # CONSTRAINT name, which is a syntax error rather than a dropped constraint.
 # Runs before CHECK_INLINE so the bare-CHECK rule cannot strip half of it.
-NAMED_CHECK = re.compile(
-    r",?\s*CONSTRAINT\s+\w+\s+CHECK \((?:[^()]|\([^()]*\))*\)"
-)
+NAMED_CHECK = re.compile(r",?\s*CONSTRAINT\s+\w+\s+CHECK \((?:[^()]|\([^()]*\))*\)")
 
 # Inline CHECK on a column definition.
 CHECK_INLINE = re.compile(r"\s+CHECK \((?:[^()]|\([^()]*\))*\)")
