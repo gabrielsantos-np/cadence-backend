@@ -49,6 +49,7 @@ from cadence_backend.retrieval.retrievers import (
     TermOverlap,
     timed,
 )
+from cadence_backend.retrieval.two_stage import PostgresTwoStage
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "data" / "bench_results.json"
@@ -233,6 +234,21 @@ async def run(args: argparse.Namespace) -> None:
 
         if include("term-overlap"):
             results.append(await evaluate(TermOverlap(corpus), queries, truth, args.chunking))
+        # The shippable shape: Postgres narrows the corpus, BM25 ranks chunks
+        # inside the candidates. Measured rather than assumed to inherit the
+        # in-memory BM25 result — ts_rank_cd is not BM25, and the first stage
+        # can drop a document the second would have ranked highly.
+        if include("fts"):
+            for candidates in (20, 60, 200):
+                results.append(
+                    await evaluate(
+                        PostgresTwoStage(con, args.chunking, candidates),
+                        queries,
+                        truth,
+                        args.chunking,
+                    )
+                )
+
         if include("bm25"):
             bm = BM25(corpus)
             results.append(await evaluate(bm, queries, truth, args.chunking))
