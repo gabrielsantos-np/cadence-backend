@@ -34,6 +34,9 @@ select = ["E", "F", "I", "UP", "B"]
 "src/cadence_backend/sources/market_schema.py" = ["E501"]
 "src/cadence_backend/sources/notes_data.py" = ["E501"]
 "src/cadence_backend/analyst/prompts.py" = ["E501"]
+# SQL COMMENT ON text. Breaking the literal would put newlines inside the
+# comment a reader sees in the database.
+"scripts/scale_facts.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
