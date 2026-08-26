@@ -17,6 +17,10 @@ wheels/
 # Scratch files that may hold credentials
 *.tmp
 
+# Generated corpus. Deterministic from scripts/generate_corpus.py, so the
+# script is the artefact and 12MB of output is not.
+data/corpus/
+
 # Tooling caches
 .pytest_cache/
 .ruff_cache/
