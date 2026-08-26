@@ -37,6 +37,9 @@ select = ["E", "F", "I", "UP", "B"]
 # SQL COMMENT ON text. Breaking the literal would put newlines inside the
 # comment a reader sees in the database.
 "scripts/scale_facts.py" = ["E501"]
+# Schema prose the model reads. Column lists have to stay on one line to
+# read as column lists.
+"src/cadence_backend/sources/market.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
