@@ -45,6 +45,11 @@ SELECT chunk_id, doc_id, span_start, span_end, fts::text
 """
 LOAD_PAGE = 20_000
 
+#: The app pool sets command_timeout=30, which a page of twenty thousand
+#: tsvectors can exceed under load. Index building is a startup job, not a
+#: request, so it gets its own budget.
+LOAD_TIMEOUT = 300.0
+
 FETCH_TEXT = """
 SELECT c.chunk_id,
        substr(d.body, c.span_start + 1, c.span_end - c.span_start) AS text,
@@ -103,7 +108,7 @@ class SupabaseBM25:
         cursor_id = 0
         position = 0
         while True:
-            page = await db.fetch(LOAD, cursor_id, LOAD_PAGE)
+            page = await db.fetch(LOAD, cursor_id, LOAD_PAGE, timeout=LOAD_TIMEOUT)
             if not page:
                 break
             for row in page:

@@ -1,5 +1,6 @@
 """FastAPI application for the Cadence backend."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -14,6 +15,18 @@ from cadence_backend.db import close_pools
 from cadence_backend.schemas.chat import ApiError, ApiErrorDetail
 
 logger = logging.getLogger(__name__)
+
+
+async def _warm_corpus() -> None:
+    try:
+        from cadence_backend.sources.corpus import corpus_source
+
+        await corpus_source._index_ready()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("corpus warmup failed; search will build on first use")
+
 
 DESCRIPTION = """\
 The backend for Cadence, an AI market analyst.
@@ -43,7 +56,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        # Warm the corpus index in the background. Building it takes minutes,
+        # and doing it lazily means the first question that searches pays the
+        # whole cost inside the analyst's turn budget. Started rather than
+        # awaited so the service is answering /health immediately, and so a
+        # database that is down delays search rather than blocking startup.
+        warmup = asyncio.create_task(_warm_corpus())
         yield
+        warmup.cancel()
         await close_pools()
 
     app = FastAPI(

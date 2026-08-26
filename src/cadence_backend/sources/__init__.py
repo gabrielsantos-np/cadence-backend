@@ -12,6 +12,7 @@ more than it saves.
 """
 
 from cadence_backend.core.config import get_settings
+from cadence_backend.sources.corpus import corpus_source
 from cadence_backend.sources.notes import notes_source
 from cadence_backend.sources.types import DataSource, DocumentSource, SqlSource
 
@@ -33,7 +34,10 @@ def _market_source() -> SqlSource:
     return market_source
 
 
-SOURCES: list[DataSource] = [_market_source(), notes_source]
+# The curated notes stay alongside the corpus rather than being folded into
+# it. They are short methodology guidance the analyst leans on for the refusal
+# cases, and twenty thousand documents of market prose would bury them.
+SOURCES: list[DataSource] = [_market_source(), notes_source, corpus_source]
 
 __all__ = [
     "SOURCES",
