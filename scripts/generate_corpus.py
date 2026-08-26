@@ -337,30 +337,37 @@ def generate(n_docs: int, market: dict) -> tuple[list[Doc], list[Egg]]:
 # --- easter eggs ------------------------------------------------------------
 
 EGG_TEMPLATES = [
-    # (sql_source, fact template, question template)
+    # (sql_source, fact, question)
+    #
+    # The question must NOT share surface form with the fact. An earlier draft
+    # asked "why did X's Q3 billings diverge?" against a fact containing "Q3
+    # billing divergence", and substring matching turned the ground truth into
+    # a giveaway: the term-overlap baseline scored R@10 0.74 and beat BM25,
+    # which is backwards. Paraphrasing is what makes the comparison mean
+    # anything — and it is what a real question looks like anyway.
     (
         "FINANCE",
         "The {q} FY{yr} billing divergence for {svc} traces to a one-off catalogue "
         "licensing true-up posted to account 5000; no subscriber movement explains it.",
-        "Why did {svc}'s {q} FY{yr} billings diverge from the panel estimate?",
+        "Why don't our books and the provider agree on {svc} for {q} FY{yr}?",
     ),
     (
         "MARKET",
         "{svc}'s {mon} cancellation spike was a deliberate migration of legacy annual "
         "plans, not organic churn; the panel counts them as cancellations regardless.",
-        "Was {svc}'s {mon} cancellation spike organic churn?",
+        "Did {svc} really lose that many customers around {mon}, or is something else going on?",
     ),
     (
         "SUPPORT",
         "The {mon} escalation surge for {svc} was driven by a single payment-provider "
         "outage lasting under six hours, which is why resolution time barely moved.",
-        "What drove the {mon} escalation surge at {svc}?",
+        "What happened at {svc} in {mon} that support felt but the service metrics never showed?",
     ),
     (
         "multi",
         "{svc}'s {q} FY{yr} advertising revenue was restated after a measurement change; "
         "the ledger carries the restated figure while the panel carries the original.",
-        "Do the ledger and the panel agree on {svc}'s {q} FY{yr} advertising revenue?",
+        "Which {svc} ad figure should I trust for {q} FY{yr}?",
     ),
 ]
 

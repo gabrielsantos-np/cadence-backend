@@ -4,7 +4,7 @@
 #   make test    run the test suite
 #   make check   everything CI would run
 
-.PHONY: install dev test lint fmt check db-up db-down db-reset db-logs db-load snowflake-setup snowflake-internal snowflake-check
+.PHONY: install dev test lint fmt check bench db-up db-down db-reset db-logs db-load snowflake-setup snowflake-internal snowflake-check
 
 PORT ?= 8000
 
@@ -76,3 +76,10 @@ snowflake-grants:
 # Prove the read-only boundary actually holds.
 snowflake-check:
 	uv run python scripts/check_snowflake_boundary.py
+
+# --- retrieval benchmark ---------------------------------------------------
+# Compares retrieval strategies offline against the planted-fact ground truth.
+#   make bench
+#   make bench ARGS="--arms bm25,term-overlap"
+bench:
+	uv run python scripts/bench_retrieval.py $(ARGS)

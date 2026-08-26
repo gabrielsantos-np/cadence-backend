@@ -20,6 +20,7 @@ wheels/
 # Generated corpus. Deterministic from scripts/generate_corpus.py, so the
 # script is the artefact and 12MB of output is not.
 data/corpus/
+data/bench_results.json
 
 # Tooling caches
 .pytest_cache/
