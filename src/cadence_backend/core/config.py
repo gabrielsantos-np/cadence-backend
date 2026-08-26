@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     # password when creating it. Never used to serve a request.
     analyst_db_password: SecretStr | None = None
 
+    # Embeddings. A SEPARATE client from the analyst's: llm/client.py points at
+    # OpenRouter, which is a chat-completions gateway and does not serve
+    # /embeddings. Any OpenAI-compatible endpoint works.
+    embedding_api_key: SecretStr | None = None
+    embedding_base_url: str = "https://api.openai.com/v1"
+    embedding_model: str = "text-embedding-3-small"
+
     # Which warehouse the analyst queries for market data: "postgres" or
     # "snowflake". Conversation storage is always Postgres either way.
     market_source: Literal["postgres", "snowflake"] = "postgres"
@@ -76,6 +83,15 @@ class Settings(BaseSettings):
     # nothing else. Same principle as analyst_ro on Postgres — the privilege
     # boundary is the warehouse, not this application.
     snowflake_role: str = "CADENCE_ANALYST_RO"
+
+    # Web search. Optional: absent means the source is not registered at all,
+    # rather than registered and failing on every call — a tool the model is
+    # offered but can never use burns turns.
+    tavily_api_key: SecretStr | None = None
+    #: Seconds to wait on the search provider. The engine awaits this inline in
+    #: the tool loop, so a hung provider stalls the stream with no step emitted.
+    web_search_timeout_seconds: float = 10.0
+    web_search_max_results: int = 5
 
     # Admin credentials, used only by scripts/setup_snowflake.py to create the
     # database, role and grants. Never used to serve a request.
@@ -99,7 +115,7 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in text.split(",") if origin.strip()]
         return value
 
-    @field_validator("openrouter_api_key", mode="before")
+    @field_validator("openrouter_api_key", "tavily_api_key", "embedding_api_key", mode="before")
     @classmethod
     def _blank_key_is_absent(cls, value: object) -> object:
         """`OPENROUTER_API_KEY=` in a .env means absent, not an empty key."""
@@ -118,6 +134,10 @@ class Settings(BaseSettings):
     def has_openrouter_key(self) -> bool:
         return self.openrouter_api_key is not None
 
+    @property
+    def has_web_search(self) -> bool:
+        return self.tavily_api_key is not None
+
     def require_database_url(self) -> str:
         return _require(self.database_url, "DATABASE_URL")
 
@@ -126,6 +146,12 @@ class Settings(BaseSettings):
 
     def require_openrouter_api_key(self) -> str:
         return _require(self.openrouter_api_key, "OPENROUTER_API_KEY")
+
+    def require_embedding_api_key(self) -> str:
+        return _require(self.embedding_api_key, "EMBEDDING_API_KEY")
+
+    def require_tavily_api_key(self) -> str:
+        return _require(self.tavily_api_key, "TAVILY_API_KEY")
 
     def snowflake_analyst_connect_args(self) -> dict[str, str]:
         """Connection arguments for the analyst's read-only Snowflake role."""
