@@ -57,12 +57,13 @@ class Settings(BaseSettings):
     # password when creating it. Never used to serve a request.
     analyst_db_password: SecretStr | None = None
 
-    # Embeddings. A SEPARATE client from the analyst's: llm/client.py points at
-    # OpenRouter, which is a chat-completions gateway and does not serve
-    # /embeddings. Any OpenAI-compatible endpoint works.
+    # Embeddings. OpenRouter serves /embeddings as well as chat, so this
+    # falls back to OPENROUTER_API_KEY and needs no second key — set
+    # EMBEDDING_API_KEY only to point somewhere else.
     embedding_api_key: SecretStr | None = None
-    embedding_base_url: str = "https://api.openai.com/v1"
-    embedding_model: str = "text-embedding-3-small"
+    embedding_base_url: str = "https://openrouter.ai/api/v1"
+    #: Prefixed, because OpenRouter routes by provider.
+    embedding_model: str = "openai/text-embedding-3-small"
 
     # Which warehouse the analyst queries for market data: "postgres" or
     # "snowflake". Conversation storage is always Postgres either way.
@@ -148,7 +149,15 @@ class Settings(BaseSettings):
         return _require(self.openrouter_api_key, "OPENROUTER_API_KEY")
 
     def require_embedding_api_key(self) -> str:
-        return _require(self.embedding_api_key, "EMBEDDING_API_KEY")
+        """The embeddings key, falling back to the OpenRouter one.
+
+        They are the same account by default. Keeping the setting separate
+        still allows pointing embeddings at another provider without moving
+        the analyst's chat traffic with it.
+        """
+        if self.embedding_api_key is not None:
+            return self.embedding_api_key.get_secret_value()
+        return _require(self.openrouter_api_key, "OPENROUTER_API_KEY or EMBEDDING_API_KEY")
 
     def require_tavily_api_key(self) -> str:
         return _require(self.tavily_api_key, "TAVILY_API_KEY")

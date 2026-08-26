@@ -33,12 +33,15 @@ CACHE = pathlib.Path(__file__).resolve().parents[3] / "data" / "corpus" / "embed
 #: OpenAI's small model supports dimension reduction. 256 keeps the corpus
 #: inside the Supabase free tier; whether that costs accuracy is an arm of the
 #: benchmark, not an assumption.
-DEFAULT_MODEL = "text-embedding-3-small"
+DEFAULT_MODEL = "openai/text-embedding-3-small"
 DEFAULT_DIMENSIONS = 256
 
 #: Published price per million tokens. Used to report cost per 1k queries
 #: rather than to bill anything.
-PRICE_PER_MTOK = {"text-embedding-3-small": 0.02, "text-embedding-3-large": 0.13}
+PRICE_PER_MTOK = {
+    "openai/text-embedding-3-small": 0.02,
+    "openai/text-embedding-3-large": 0.13,
+}
 
 #: The API caps a single request; batching well below it keeps retries cheap.
 BATCH = 256
@@ -160,12 +163,8 @@ async def embed_all(embedder: Embedder, texts: list[str], concurrency: int = 4) 
 def available() -> tuple[bool, str]:
     """Whether an embeddings backend is configured, and why not if it isn't."""
     settings = get_settings()
-    if settings.embedding_api_key is None:
-        return False, (
-            "EMBEDDING_API_KEY is not set. OpenRouter does not serve /embeddings, "
-            "so the dense, hybrid and rerank arms need a separate key "
-            "(OpenAI or any OpenAI-compatible endpoint)."
-        )
+    if settings.embedding_api_key is None and settings.openrouter_api_key is None:
+        return False, "No embeddings key: set OPENROUTER_API_KEY or EMBEDDING_API_KEY."
     return True, ""
 
 

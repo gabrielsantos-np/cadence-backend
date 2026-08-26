@@ -180,6 +180,80 @@ def load_market() -> dict:
     return {"subs": subs, "events": events, "months": months}
 
 
+# --- topical diversity ------------------------------------------------------
+# Lexical variety was not enough. Every document discussed the same ten
+# services and the same subscriber metrics, so in embedding space the corpus
+# collapsed: for a question whose answer sits in one chunk, 8,743 other chunks
+# scored higher, purely because they were all about the same subject in the
+# same register. Dense retrieval measured 0.04 recall@5 against BM25's 0.45,
+# which says more about the corpus than about embeddings.
+#
+# These paragraphs give the corpus genuinely different subject matter, so
+# semantic similarity has something to separate.
+
+TOPIC_PARAS = {
+    "regulation": [
+        "The consultation on age-assurance duties closed without agreement on "
+        "whether estimation counts as verification. Providers argued the "
+        "threshold should track demonstrable risk rather than catalogue size; "
+        "the regulator's own impact assessment assumed the opposite and has not "
+        "been revised.",
+        "Draft guidance on prominence obligations would require designated "
+        "services to surface public-service content within two interactions of "
+        "launch. Whether a voice interface constitutes an interaction is left "
+        "undefined, which is the sort of ambiguity that gets litigated rather "
+        "than clarified.",
+    ],
+    "licensing": [
+        "The output deal covers first-window rights in three territories with a "
+        "holdback of eighteen months on catalogue titles. Renewal is at the "
+        "licensor's option, which is unusual and suggests the negotiation was "
+        "conducted from a position of some weakness.",
+        "Residual obligations under the prior agreement survive termination, so "
+        "the amortisation schedule does not end when the licence does. Finance "
+        "should expect the tail to run three further quarters.",
+    ],
+    "technology": [
+        "Edge cache hit ratios improved after the manifest rewrite, though the "
+        "gain is concentrated in the long tail rather than in peak-hour "
+        "delivery. Origin egress fell by less than the ratio would imply, which "
+        "points at cold-start behaviour on newly published assets.",
+        "The player rollout was staged by device class. Adoption on connected "
+        "televisions lags mobile by roughly a release cycle, and the older "
+        "firmware cohort cannot take the new codec at all without a hardware "
+        "refresh nobody is planning to fund.",
+    ],
+    "advertising": [
+        "Upfront commitments came in below the prior cycle, with buyers holding "
+        "back inventory for scatter. Pricing held on premium placements and "
+        "softened everywhere else, which is the pattern you see when volume is "
+        "being defended at the expense of yield.",
+        "Measurement currency remains contested. Two of the three buying groups "
+        "will not transact on the panel alone and want log-level delivery data, "
+        "which the panel provider is not contractually able to supply.",
+    ],
+    "consumer": [
+        "Qualitative work suggests cancellation is rarely a considered decision. "
+        "Respondents describe it as housekeeping prompted by an unrelated "
+        "financial review, which is why win-back messaging framed around value "
+        "performs worse than messaging framed around a specific unwatched title.",
+        "Household sharing behaviour has not shifted materially since the policy "
+        "change, though stated intent did. The gap between what people say they "
+        "will do and what they do is wide enough that the survey should not be "
+        "used to size the opportunity.",
+    ],
+    "corporate": [
+        "The transaction is structured as an asset purchase, so the acquiring "
+        "entity does not assume the content liabilities. Whether the seller can "
+        "service those liabilities without the associated revenue is the "
+        "question the market has not yet asked.",
+        "Board composition changes take effect at completion. Two of the three "
+        "incoming directors have prior experience only in linear distribution, "
+        "which is either continuity or inertia depending on who is describing it.",
+    ],
+}
+
+
 # --- document builders ------------------------------------------------------
 
 
@@ -262,10 +336,18 @@ def build_body(doc_type: str, market: dict, sid: int, months: list[str], paras: 
     elif doc_type == "internal_memo":
         out.append("INTERNAL — not for distribution outside Finance and Operations.\n\n")
 
-    for month in months[:paras]:
+    topics = list(TOPIC_PARAS)
+    for i, month in enumerate(months[:paras]):
         block = _para_metrics(market, sid, month)
         if block:
             out.append(block + "\n\n")
+        # Roughly two in five paragraphs are about something other than
+        # subscriber metrics, so the corpus spans subjects rather than only
+        # phrasings. Without this, everything sits in one region of embedding
+        # space and dense retrieval has nothing to discriminate on.
+        if RNG.random() < 0.4:
+            topic = topics[(i + sid) % len(topics)]
+            out.append(RNG.choice(TOPIC_PARAS[topic]) + "\n\n")
 
     if doc_type in ("methodology", "research_note"):
         out.append(RNG.choice(CAVEAT) + " " + RNG.choice(CAVEAT) + "\n\n")

@@ -182,9 +182,29 @@ def table(results: list[Result]) -> str:
     return "\n".join(lines)
 
 
+async def connect(dsn: str, attempts: int = 5) -> asyncpg.Connection:
+    """Connect, retrying transient resolution failures.
+
+    DNS to the Supabase pooler fails intermittently from here — getaddrinfo
+    raises while curl to the same host succeeds. A sweep embeds a hundred
+    thousand chunks, so losing the whole run to a blip on the first connect is
+    expensive out of all proportion to the fault.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return await asyncpg.connect(dsn, statement_cache_size=0, timeout=30)
+        except (OSError, asyncpg.PostgresConnectionError) as error:
+            if attempt == attempts:
+                raise
+            wait = 2**attempt
+            print(f"  connect failed ({type(error).__name__}); retrying in {wait}s")
+            await asyncio.sleep(wait)
+    raise RuntimeError("unreachable")
+
+
 async def run(args: argparse.Namespace) -> None:
     settings = get_settings()
-    con = await asyncpg.connect(settings.require_database_url(), statement_cache_size=0)
+    con = await connect(settings.require_database_url())
     try:
         queries, truth = await load_truth(con)
         if not queries:
@@ -200,17 +220,17 @@ async def run(args: argparse.Namespace) -> None:
         # --- lexical arms, on the default chunking ------------------------
         started = time.perf_counter()
         documents = read_documents()
-        corpus = load_corpus(documents, DEFAULT_CHUNKING)
+        corpus = load_corpus(documents, args.chunking)
         print(
             f"chunked {len(documents):,} documents into {len(corpus.chunks):,} "
-            f"chunks ({DEFAULT_CHUNKING}) in {time.perf_counter() - started:.1f}s"
+            f"chunks ({args.chunking}) in {time.perf_counter() - started:.1f}s"
         )
 
         if include("term-overlap"):
-            results.append(await evaluate(TermOverlap(corpus), queries, truth, DEFAULT_CHUNKING))
+            results.append(await evaluate(TermOverlap(corpus), queries, truth, args.chunking))
         if include("bm25"):
             bm = BM25(corpus)
-            results.append(await evaluate(bm, queries, truth, DEFAULT_CHUNKING))
+            results.append(await evaluate(bm, queries, truth, args.chunking))
 
         # --- arms that only need the chat model ---------------------------
         # Rewriting, expansion and reranking call the analyst's OpenRouter
@@ -227,11 +247,11 @@ async def run(args: argparse.Namespace) -> None:
                 results.append(await evaluate(BM25(alt), queries, truth, strategy))
 
         if include("rewrite"):
-            results.append(await evaluate(QueryRewrite(base), queries, truth, DEFAULT_CHUNKING))
+            results.append(await evaluate(QueryRewrite(base), queries, truth, args.chunking))
         if include("multi-query"):
-            results.append(await evaluate(MultiQuery(base), queries, truth, DEFAULT_CHUNKING))
+            results.append(await evaluate(MultiQuery(base), queries, truth, args.chunking))
         if include("rerank"):
-            results.append(await evaluate(LLMRerank(base), queries, truth, DEFAULT_CHUNKING))
+            results.append(await evaluate(LLMRerank(base), queries, truth, args.chunking))
 
         # --- arms that genuinely need embeddings --------------------------
         ok, why = emb.available()
@@ -247,13 +267,13 @@ async def run(args: argparse.Namespace) -> None:
             per_1k = embedder.cost_usd / max(len(queries), 1) * 1000
 
             if include("dense"):
-                results.append(await evaluate(dense, queries, truth, DEFAULT_CHUNKING, per_1k))
+                results.append(await evaluate(dense, queries, truth, args.chunking, per_1k))
             if include("hybrid"):
                 hybrid = HybridRRF([BM25(corpus), dense])
-                results.append(await evaluate(hybrid, queries, truth, DEFAULT_CHUNKING, per_1k))
+                results.append(await evaluate(hybrid, queries, truth, args.chunking, per_1k))
                 if include("rerank"):
                     results.append(
-                        await evaluate(LLMRerank(hybrid), queries, truth, DEFAULT_CHUNKING, per_1k)
+                        await evaluate(LLMRerank(hybrid), queries, truth, args.chunking, per_1k)
                     )
             if include("dimensions"):
                 for dims in (512, 1536):
@@ -281,6 +301,13 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--arms", help="Comma-separated subset, e.g. bm25,dense")
     p.add_argument("--dimensions", type=int, default=emb.DEFAULT_DIMENSIONS)
+    p.add_argument(
+        "--chunking",
+        default=DEFAULT_CHUNKING,
+        choices=list(STRATEGIES),
+        help="Chunking for the non-sweep arms. Dense is far more sensitive to "
+        "this than BM25, because it averages a whole chunk into one vector.",
+    )
     asyncio.run(run(p.parse_args()))
 
 
