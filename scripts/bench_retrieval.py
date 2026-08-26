@@ -212,19 +212,31 @@ async def run(args: argparse.Namespace) -> None:
             bm = BM25(corpus)
             results.append(await evaluate(bm, queries, truth, DEFAULT_CHUNKING))
 
-        # --- everything below needs embeddings ----------------------------
+        # --- arms that only need the chat model ---------------------------
+        # Rewriting, expansion and reranking call the analyst's OpenRouter
+        # client, not an embeddings endpoint. Gating them behind an embeddings
+        # key would have left most of the study unrunnable for no reason. They
+        # wrap the best available base retriever, which is BM25 without a key.
+        base: Retriever = bm if include("bm25") else BM25(corpus)
+
+        if include("chunking"):
+            for strategy in STRATEGIES:
+                if strategy == DEFAULT_CHUNKING:
+                    continue
+                alt = load_corpus(documents, strategy)
+                results.append(await evaluate(BM25(alt), queries, truth, strategy))
+
+        if include("rewrite"):
+            results.append(await evaluate(QueryRewrite(base), queries, truth, DEFAULT_CHUNKING))
+        if include("multi-query"):
+            results.append(await evaluate(MultiQuery(base), queries, truth, DEFAULT_CHUNKING))
+        if include("rerank"):
+            results.append(await evaluate(LLMRerank(base), queries, truth, DEFAULT_CHUNKING))
+
+        # --- arms that genuinely need embeddings --------------------------
         ok, why = emb.available()
-        dense_arms = [
-            "dense",
-            "chunking",
-            "dimensions",
-            "hybrid",
-            "rewrite",
-            "multi-query",
-            "rerank",
-        ]
         if not ok:
-            for arm in dense_arms:
+            for arm in ("dense", "hybrid", "dimensions"):
                 if include(arm):
                     results.append(Result(arm=arm, chunking="—", queries=len(queries), skipped=why))
         else:
@@ -237,37 +249,25 @@ async def run(args: argparse.Namespace) -> None:
             if include("dense"):
                 results.append(await evaluate(dense, queries, truth, DEFAULT_CHUNKING, per_1k))
             if include("hybrid"):
-                results.append(
-                    await evaluate(
-                        HybridRRF([BM25(corpus), dense]), queries, truth, DEFAULT_CHUNKING, per_1k
-                    )
-                )
-            if include("rewrite"):
-                results.append(
-                    await evaluate(QueryRewrite(dense), queries, truth, DEFAULT_CHUNKING, per_1k)
-                )
-            if include("multi-query"):
-                results.append(
-                    await evaluate(MultiQuery(dense), queries, truth, DEFAULT_CHUNKING, per_1k)
-                )
-            if include("rerank"):
-                results.append(
-                    await evaluate(
-                        LLMRerank(HybridRRF([BM25(corpus), dense])),
-                        queries,
-                        truth,
-                        DEFAULT_CHUNKING,
-                        per_1k,
-                    )
-                )
-            if include("chunking"):
-                for strategy in STRATEGIES:
-                    if strategy == DEFAULT_CHUNKING:
-                        continue
-                    alt = load_corpus(documents, strategy)
-                    alt.vectors = await emb.embed_all(embedder, alt.texts)
+                hybrid = HybridRRF([BM25(corpus), dense])
+                results.append(await evaluate(hybrid, queries, truth, DEFAULT_CHUNKING, per_1k))
+                if include("rerank"):
                     results.append(
-                        await evaluate(Dense(alt, embedder), queries, truth, strategy, per_1k)
+                        await evaluate(LLMRerank(hybrid), queries, truth, DEFAULT_CHUNKING, per_1k)
+                    )
+            if include("dimensions"):
+                for dims in (512, 1536):
+                    alt_embedder = emb.ApiEmbedder(dimensions=dims)
+                    alt = load_corpus(documents, DEFAULT_CHUNKING)
+                    alt.vectors = await emb.embed_all(alt_embedder, alt.texts)
+                    results.append(
+                        await evaluate(
+                            Dense(alt, alt_embedder),
+                            queries,
+                            truth,
+                            DEFAULT_CHUNKING,
+                            alt_embedder.cost_usd / max(len(queries), 1) * 1000,
+                        )
                     )
 
         print(table(results))

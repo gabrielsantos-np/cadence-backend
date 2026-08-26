@@ -25,6 +25,11 @@ from cadence_backend.retrieval.embeddings import Embedder, embed_all, normalise
 
 logger = logging.getLogger(__name__)
 
+#: How much of a candidate passage the reranker is shown. Large enough to cover
+#: a 1024-token chunk whole; twenty of these is roughly 10k tokens of prompt,
+#: which is the real cost of reranking and is charged to the arm.
+PASSAGE_CHARS = 4200
+
 
 @dataclass
 class Hit:
@@ -318,7 +323,14 @@ class LLMRerank:
         if len(candidates) <= 1:
             return candidates[:k]
 
-        listing = "\n\n".join(f"[{i}] {h.chunk.text[:600]}" for i, h in enumerate(candidates))
+        # The whole passage, not a preview. Truncating to 600 characters showed
+        # the reranker under a third of a 512-token chunk, so a planted fact
+        # past that point was invisible and the arm scored as though reranking
+        # hurts. A cross-encoder that cannot see the passage is not a
+        # cross-encoder.
+        listing = "\n\n".join(
+            f"[{i}] {h.chunk.text[:PASSAGE_CHARS]}" for i, h in enumerate(candidates)
+        )
         try:
             completion = await llm().chat.completions.create(
                 model=self.model,
