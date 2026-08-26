@@ -158,6 +158,11 @@ async def evaluate(
     res.precision_5_multi = statistics.mean(p5) if p5 else 0.0
     res.p50_ms = percentile(latencies, 50)
     res.p95_ms = percentile(latencies, 95)
+    # Wrappers bill per query, so their spend is charged on top of whatever the
+    # base retriever cost. getattr: the lexical arms have no spend at all.
+    spend = getattr(retriever, "spend", 0.0)
+    if spend:
+        res.usd_per_1k += spend / max(len(queries), 1) * 1000
     return res
 
 

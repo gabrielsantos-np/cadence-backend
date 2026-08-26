@@ -130,3 +130,35 @@ def test_format_sse_never_emits_a_raw_newline_in_data() -> None:
 
 def test_done_event_is_an_empty_object() -> None:
     assert format_sse("done", DoneEvent()) == "event: done\ndata: {}\n\n"
+
+
+def test_search_result_score_is_optional_and_omitted() -> None:
+    """A source that does not score must stay byte-identical on the wire.
+
+    The frontend has shipped against a four-field SearchResult. An optional
+    score plus exclude_none keeps that contract additive — the same guarantee
+    Finding.so_what relies on.
+    """
+    from cadence_backend.schemas.trace import SearchResult
+
+    unscored = SearchResult(
+        title="Coverage note",
+        source="Cobalt Research Group",
+        reference="CRG-COV-2026",
+        snippet="Where a parent reports two services jointly...",
+    )
+    assert dump(unscored) == {
+        "title": "Coverage note",
+        "source": "Cobalt Research Group",
+        "reference": "CRG-COV-2026",
+        "snippet": "Where a parent reports two services jointly...",
+    }
+
+    scored = SearchResult(
+        title="t",
+        source="s",
+        reference="r",
+        snippet="x",
+        score=0.8312,
+    )
+    assert dump(scored)["score"] == 0.8312

@@ -25,6 +25,23 @@ from cadence_backend.retrieval.embeddings import Embedder, embed_all, normalise
 
 logger = logging.getLogger(__name__)
 
+#: Published OpenRouter pricing per million tokens for the arm model. Used to
+#: report cost per thousand queries — reranking sends ~10k tokens of prompt per
+#: query, so leaving it at zero would make the cost axis fiction for exactly
+#: the arm where cost decides the recommendation.
+PRICE_IN_PER_MTOK = 1.00
+PRICE_OUT_PER_MTOK = 5.00
+
+
+def _charge(usage) -> float:
+    if usage is None:
+        return 0.0
+    return (
+        usage.prompt_tokens / 1e6 * PRICE_IN_PER_MTOK
+        + usage.completion_tokens / 1e6 * PRICE_OUT_PER_MTOK
+    )
+
+
 #: How much of a candidate passage the reranker is shown. Large enough to cover
 #: a 1024-token chunk whole; twenty of these is roughly 10k tokens of prompt,
 #: which is the real cost of reranking and is charged to the arm.
@@ -210,6 +227,7 @@ class QueryRewrite:
     model: str = "anthropic/claude-haiku-4.5"
     name: str = field(init=False)
     calls: int = field(default=0, init=False)
+    spend: float = field(default=0.0, init=False)
 
     def __post_init__(self) -> None:
         self.name = f"{self.inner.name} + rewrite"
@@ -230,6 +248,7 @@ class QueryRewrite:
                 messages=[{"role": "user", "content": self.PROMPT + query}],
             )
             self.calls += 1
+            self.spend += _charge(completion.usage)
             return (completion.choices[0].message.content or query).strip() or query
         except Exception:
             logger.warning("rewrite failed; falling back to the raw query", exc_info=True)
@@ -253,6 +272,7 @@ class MultiQuery:
     model: str = "anthropic/claude-haiku-4.5"
     name: str = field(init=False)
     calls: int = field(default=0, init=False)
+    spend: float = field(default=0.0, init=False)
 
     def __post_init__(self) -> None:
         self.name = f"{self.inner.name} + multi-query"
@@ -277,6 +297,7 @@ class MultiQuery:
                 ],
             )
             self.calls += 1
+            self.spend += _charge(completion.usage)
             text = completion.choices[0].message.content or ""
             variants += [ln.strip() for ln in text.splitlines() if ln.strip()][: self.n]
         except Exception:
@@ -312,6 +333,7 @@ class LLMRerank:
     model: str = "anthropic/claude-haiku-4.5"
     name: str = field(init=False)
     calls: int = field(default=0, init=False)
+    spend: float = field(default=0.0, init=False)
 
     def __post_init__(self) -> None:
         self.name = f"{self.inner.name} + rerank@{self.depth}"
@@ -347,6 +369,7 @@ class LLMRerank:
                 ],
             )
             self.calls += 1
+            self.spend += _charge(completion.usage)
             order = [
                 int(x) for x in re.findall(r"\d+", completion.choices[0].message.content or "")
             ]

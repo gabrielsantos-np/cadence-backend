@@ -15,6 +15,12 @@ class SearchResult(CamelModel):
     source: str
     reference: str
     snippet: str
+    #: Relevance, where the source computes one. Optional and omitted rather
+    #: than sent as null, so a source that does not score stays byte-identical
+    #: on the wire — the same pattern as Finding.so_what. Adding it required a
+    #: real field: CamelModel forbids extras, so a score cannot be smuggled
+    #: through undeclared.
+    score: float | None = None
 
 
 class SqlStep(CamelModel):

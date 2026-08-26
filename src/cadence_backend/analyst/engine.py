@@ -210,7 +210,9 @@ async def run_analyst(
                         {
                             "role": "tool",
                             "tool_call_id": call.id,
-                            "content": json.dumps([r.model_dump(by_alias=True) for r in results]),
+                            "content": json.dumps(
+                                [r.model_dump(by_alias=True, exclude_none=True) for r in results]
+                            ),
                         }
                     )
                 except Exception as error:
