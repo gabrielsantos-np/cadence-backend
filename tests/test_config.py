@@ -72,3 +72,51 @@ def test_secrets_are_not_in_the_repr() -> None:
     assert "supersecret" not in str(s)
     # Still reachable deliberately, at the call site that needs it.
     assert s.openrouter_api_key.get_secret_value() == "sk-or-supersecret"
+
+
+# --------------------------------------------------------------------------
+# Provider switch. Two gateways serve the same models; picking the wrong one
+# fails in ways that look like an outage — a 401, or a 404 on the model id.
+# --------------------------------------------------------------------------
+
+
+def test_default_provider_is_openrouter() -> None:
+    """Existing deployments must not change gateway by upgrading."""
+    s = settings(openrouter_api_key="sk-or-test")
+    assert s.llm_provider == "openrouter"
+    key, url, model = s.llm_credentials()
+    assert key == "sk-or-test"
+    assert "openrouter.ai" in url
+    assert model == "anthropic/claude-opus-5"
+
+
+def test_anthropic_provider_resolves_its_own_key_url_and_model() -> None:
+    s = settings(llm_provider="anthropic", anthropic_api_key="sk-ant-api03-test")
+    key, url, model = s.llm_credentials()
+    assert key == "sk-ant-api03-test"
+    assert url == "https://api.anthropic.com/v1"
+    # Unprefixed: Anthropic 404s on OpenRouter's `anthropic/…` form.
+    assert model == "claude-opus-4-5-20251101"
+    assert "/" not in model
+
+
+def test_openrouter_key_does_not_satisfy_the_anthropic_provider() -> None:
+    """Selecting a provider without its key must name that variable, not the other."""
+    s = settings(llm_provider="anthropic", openrouter_api_key="sk-or-test")
+    assert s.has_llm_key is False
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+        s.llm_credentials()
+
+
+def test_blank_anthropic_key_is_absent_not_empty() -> None:
+    """`ANTHROPIC_API_KEY=` in a .env is an unset key, not a key of ''."""
+    s = settings(llm_provider="anthropic", anthropic_api_key="   ")
+    assert s.anthropic_api_key is None
+    assert s.has_llm_key is False
+
+
+def test_anthropic_key_never_reaches_a_repr() -> None:
+    """Settings objects end up in log lines and tracebacks."""
+    s = settings(llm_provider="anthropic", anthropic_api_key="sk-ant-api03-secret")
+    assert "sk-ant-api03-secret" not in repr(s)
+    assert "sk-ant-api03-secret" not in str(s.model_dump())
