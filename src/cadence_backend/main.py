@@ -112,15 +112,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(conversations.router)
 
     logger.info(
-        "%s %s starting (environment=%s, market_source=%s, llm=%s, analyst=%s)",
+        "%s %s starting (environment=%s, market_source=%s, analyst=%s)",
         settings.app_name,
         settings.app_version,
         settings.environment,
         settings.market_source,
-        # Which gateway is actually in the path, so a surprising bill or a
-        # sudden 401 has an obvious first thing to check.
-        settings.llm_provider,
-        "ready" if settings.has_llm_key else "no API key",
+        "ready" if settings.has_openrouter_key else "no API key",
     )
     return app
 

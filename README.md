@@ -242,10 +242,7 @@ Settings are read from the environment (or `.env`) via `pydantic-settings`; see
 | `LOG_LEVEL` | `INFO` | |
 | `FRONTEND_ORIGINS` | `http://localhost:3000` | Comma-separated. Never `*`. |
 | `OPENROUTER_API_KEY` | unset | Required to answer questions. Absent, the service still starts and `/health` passes. |
-| `OPENROUTER_MODEL` | `anthropic/claude-opus-5` | Prefixed — OpenRouter routes by provider. |
-| `LLM_PROVIDER` | `openrouter` | `openrouter` or `anthropic`. Both serve the same Claude models through the OpenAI-compatible shape, so switching is configuration, not code. |
-| `ANTHROPIC_API_KEY` | unset | Required when `LLM_PROVIDER=anthropic`. A console.anthropic.com key, beginning `sk-ant-api03-`. A Claude Code subscription credential (`sk-ant-oat01-`) is **not** an API key: it authenticates and is then rate-limited, because it is scoped to Claude Code rather than to the API. |
-| `ANTHROPIC_MODEL` | `claude-opus-4-5-20251101` | Unprefixed — Anthropic 404s on OpenRouter's `anthropic/…` form. |
+| `OPENROUTER_MODEL` | `anthropic/claude-opus-5` | |
 | `DATABASE_URL` | unset | Conversation storage. Local Postgres or Supabase. |
 | `MARKET_SOURCE` | `postgres` | `postgres` or `snowflake`. |
 | `ANALYST_DATABASE_URL` | unset | The read-only market connection, when `MARKET_SOURCE=postgres`. |

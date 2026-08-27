@@ -44,21 +44,6 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr | None = None
     openrouter_model: str = "anthropic/claude-opus-5"
 
-    # Which gateway the analyst's chat traffic goes through. Both serve the
-    # same Claude models; they differ in billing and in who is in the path.
-    #
-    # "anthropic" needs a key from console.anthropic.com, which begins
-    # `sk-ant-api03-`. A Claude Code subscription credential (`sk-ant-oat01-`)
-    # is not an API key and will not work here — it authenticates and is then
-    # rate-limited, because it is scoped to Claude Code rather than to the API.
-    llm_provider: Literal["openrouter", "anthropic"] = "openrouter"
-    anthropic_api_key: SecretStr | None = None
-    #: Unprefixed: Anthropic's own model ids carry no vendor segment.
-    anthropic_model: str = "claude-opus-4-5-20251101"
-    #: Anthropic's OpenAI-compatible surface, so the engine's function-calling
-    #: shape works unchanged against either provider.
-    anthropic_base_url: str = "https://api.anthropic.com/v1"
-
     # Two connections, deliberately. The app owns conversation storage and
     # connects as the schema owner; the analyst gets a role Postgres restricts
     # to reads, because the analyst writes its own SQL. Never point both at the
@@ -122,7 +107,7 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in text.split(",") if origin.strip()]
         return value
 
-    @field_validator("openrouter_api_key", "embedding_api_key", "anthropic_api_key", mode="before")
+    @field_validator("openrouter_api_key", "embedding_api_key", mode="before")
     @classmethod
     def _blank_key_is_absent(cls, value: object) -> object:
         """`OPENROUTER_API_KEY=` in a .env means absent, not an empty key."""
@@ -140,31 +125,6 @@ class Settings(BaseSettings):
     @property
     def has_openrouter_key(self) -> bool:
         return self.openrouter_api_key is not None
-
-    @property
-    def has_llm_key(self) -> bool:
-        """Whether the selected provider can actually be called."""
-        if self.llm_provider == "anthropic":
-            return self.anthropic_api_key is not None
-        return self.openrouter_api_key is not None
-
-    def llm_credentials(self) -> tuple[str, str, str]:
-        """(api_key, base_url, model) for the selected provider.
-
-        Resolved in one place so the client never has to branch, and so a
-        missing key names the variable the operator actually has to set.
-        """
-        if self.llm_provider == "anthropic":
-            return (
-                _require(self.anthropic_api_key, "ANTHROPIC_API_KEY"),
-                self.anthropic_base_url,
-                self.anthropic_model,
-            )
-        return (
-            _require(self.openrouter_api_key, "OPENROUTER_API_KEY"),
-            "https://openrouter.ai/api/v1",
-            self.openrouter_model,
-        )
 
     def require_database_url(self) -> str:
         return _require(self.database_url, "DATABASE_URL")
