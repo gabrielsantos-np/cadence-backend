@@ -195,7 +195,7 @@ async def run_analyst(
                 query = args.get("query") or ""
                 try:
                     source = find_document_source(args.get("source") or "")
-                    results = await source.search(query)
+                    results = await source.search(query, question)
                     step_no += 1
                     yield StepEvent(
                         SearchStep(

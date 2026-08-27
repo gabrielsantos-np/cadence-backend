@@ -39,7 +39,14 @@ class DocumentSource(Protocol):
     name: str
     description: str
 
-    async def search(self, query: str) -> list[SearchResult]: ...
+    async def search(self, query: str, question: str | None = None) -> list[SearchResult]:
+        """`query` is the analyst's own wording; `question` is the user's, verbatim.
+
+        Both are passed because they are not interchangeable: the analyst tends
+        to paraphrase away the entity and period tokens that make a lexical
+        search selective, and those are exactly the terms worth keeping.
+        """
+        ...
 
 
 DataSource = SqlSource | DocumentSource

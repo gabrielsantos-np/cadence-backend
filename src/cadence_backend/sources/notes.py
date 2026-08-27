@@ -40,7 +40,12 @@ class NotesSource:
         "cannot be compared or decomposed."
     )
 
-    async def search(self, query: str) -> list[SearchResult]:
+    async def search(self, query: str, question: str | None = None) -> list[SearchResult]:
+        # `question` is accepted for protocol compatibility and deliberately
+        # unused. These six notes carry the methodology guidance behind the
+        # refusals, and they are matched by word overlap over 1,508 characters —
+        # widening the query here changes which note wins for reasons unrelated
+        # to the guardrails it protects.
         return [
             SearchResult(
                 title=note.title,

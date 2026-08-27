@@ -26,6 +26,7 @@ from cadence_backend.retrieval import index_cache
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EGGS = ROOT / "data" / "corpus" / "easter_eggs.json"
+REWRITES = ROOT / "data" / "corpus" / "rewrites.json"
 DEPTH = 10
 
 
@@ -108,6 +109,43 @@ def arm_expand_static(index, question, k):
     return rrf([index.rank(v, k * 3) for v in variants], k)
 
 
+def _rewrites(model: str) -> dict:
+    if not REWRITES.exists():
+        raise SystemExit("no rewrites — run scripts/gen_rewrites.py first")
+    data = json.loads(REWRITES.read_text())
+    out = {}
+    for q, by_model in data.items():
+        if model in by_model:
+            out[q] = by_model[model]
+    if not out:
+        raise SystemExit(f"no rewrites cached for model {model}")
+    return out
+
+
+def make_rewrite_arm(model: str, use: str):
+    """Build an arm that fuses the cached rewrites for one model.
+
+    `use` selects which generated forms enter the fusion, so paraphrasing and
+    HyDE can be credited separately rather than as one undifferentiated win.
+    """
+    cache = _rewrites(model)
+
+    def arm(index, question, k):
+        r = cache.get(question, {})
+        queries = [question]
+        if use in ("para", "all"):
+            queries += r.get("paraphrases", [])
+        if use in ("hyde", "all"):
+            if r.get("hyde"):
+                queries.append(r["hyde"])
+        queries = [q for q in queries if q.strip()]
+        if len(queries) == 1:
+            return index.rank(queries[0], k)
+        return rrf([index.rank(q, k * 3) for q in queries], k)
+
+    return arm
+
+
 ARMS = {"bm25": arm_bm25, "expand-static": arm_expand_static}
 
 
@@ -128,7 +166,12 @@ def main() -> None:
 
     rows = []
     for name in args.arms.split(","):
-        fn = ARMS[name.strip()]
+        name = name.strip()
+        if ":" in name:  # e.g. rewrite:para:anthropic/claude-haiku-4.5
+            _, use, model = name.split(":", 2)
+            fn = make_rewrite_arm(model, use)
+        else:
+            fn = ARMS[name]
         ranks, times = [], []
         for q, spans in gold.items():
             t = time.perf_counter()

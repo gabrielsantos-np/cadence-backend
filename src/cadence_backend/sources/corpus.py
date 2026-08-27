@@ -66,12 +66,24 @@ class CorpusSource:
                 return None
         return self._index
 
-    async def search(self, query: str) -> list[SearchResult]:
+    async def search(self, query: str, question: str | None = None) -> list[SearchResult]:
         index = await self._index_ready()
         if index is None:
             return []
 
-        ranked = index.rank(query, TOP_K)
+        # The user's own wording first, the analyst's second. Measured over the
+        # 98 planted questions: ranking on the analyst's query alone reaches
+        # recall@5 of 0.102, and on the user's question 0.459. The analyst
+        # paraphrases "Q1 FY2024" into "the first quarter", and those two tokens
+        # occur in 24 and 40 chunks respectively — they are the whole signal.
+        #
+        # Filling rather than fusing: reciprocal-rank fusion scored better at
+        # ten results and worse at five, and only six are returned.
+        ranked = index.rank(question, TOP_K) if question else []
+        if len(ranked) < TOP_K and query and query != question:
+            have = {r.chunk_id for r in ranked}
+            ranked += [r for r in index.rank(query, TOP_K) if r.chunk_id not in have]
+            ranked = ranked[:TOP_K]
         if not ranked:
             return []
 
