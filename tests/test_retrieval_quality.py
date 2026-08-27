@@ -136,9 +136,7 @@ def test_ranking_is_deterministic(index, eggs):
     """Two identical queries must rank identically, or nothing above is stable."""
     gold, _ = eggs
     q = next(iter(gold))
-    assert [r.chunk_id for r in index.rank(q, TOP_K)] == [
-        r.chunk_id for r in index.rank(q, TOP_K)
-    ]
+    assert [r.chunk_id for r in index.rank(q, TOP_K)] == [r.chunk_id for r in index.rank(q, TOP_K)]
 
 
 def test_empty_and_junk_queries_do_not_raise(index):
