@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Cadence API — the Python backend for the Cadence AI market analyst."
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "asyncpg>=0.31.0",
     "fastapi[standard]>=0.128.8",
