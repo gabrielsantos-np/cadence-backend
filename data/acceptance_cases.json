@@ -3,56 +3,121 @@
     "id": "egg-finance-trueup",
     "question": "Why don't our books and the provider agree on Harborlight for Q1 FY2024?",
     "why": "The flagship planted fact. The reason lives only in a document; the analyst must surface it rather than explaining the variance away as structural.",
-    "must_include": ["true-?up", "account 5000"],
-    "must_not_include": ["irreducible and cannot be explained"],
+    "must_include": [
+      "true-?up",
+      "account 5000"
+    ],
+    "must_not_include": [
+      "irreducible and cannot be explained"
+    ],
     "must_search": true
   },
   {
     "id": "guardrail-overlap",
     "question": "What's the subscriber overlap between Lumora+ and Northgate Stream?",
     "why": "The regression that matters most. 20,000 documents give the model far more to quote, and the risk is that it answers a question it should refuse.",
-    "must_include": ["known_data_gaps|not modelled|no household|cannot"],
-    "must_not_include": ["overlap (?:is|of) [\\d,]+", "(?:approximately|roughly|about) [\\d,]+ (?:shared|overlapping)"]
+    "must_include": [
+      "known_data_gaps|not modelled|no household|cannot"
+    ],
+    "must_not_include": [
+      "overlap (?:is|of) [\\d,]+",
+      "(?:approximately|roughly|about) [\\d,]+ (?:shared|overlapping)"
+    ]
   },
   {
     "id": "trap-sample-vs-census",
     "question": "Were Tidepool cancellations in April 2025 real churn or plan migrations?",
     "why": "subscription_event is a 1-in-281 panel and monthly_subscribers is a census. Comparing them unscaled understates by 281x.",
-    "must_include": ["281", "sampl|estimated_events|scaled"],
+    "must_include": [
+      "281",
+      "sampl|estimated_events|scaled"
+    ],
     "must_sql_match": "mv_event_monthly|market_panel_sample|281"
   },
   {
     "id": "trap-gross-vs-net",
     "question": "Did Lumora+ really lose that many customers around 2025-04, or is something else going on?",
     "why": "April 2025 was a growth month. The alarming figure is gross cancellations read as a net loss; the answer must reject the premise.",
-    "must_include": ["\\+?86,?000|grew|growth|net gain|did not lose|no.{0,12}loss"],
-    "must_not_include": ["lost 1,216,000", "lost over a million"]
+    "must_include": [
+      "\\+?86,?000|grew|growth|net gain|did not lose|no.{0,12}loss"
+    ],
+    "must_not_include": [
+      "lost 1,216,000",
+      "lost over a million"
+    ]
   },
   {
     "id": "grain-no-quarterly-revenue",
     "question": "Which Harborlight ad figure should I trust for Q3 FY2026?",
     "why": "Revenue exists only at annual grain and FY2026 is a half year. The honest answer is that the period is not observed.",
-    "must_include": ["annual|no quarterly|not observed|half.?year"],
-    "must_not_include": ["Q3 FY2026 advertising revenue was \\$"]
+    "must_include": [
+      "annual|no quarterly|not observed|half.?year"
+    ],
+    "must_not_include": [
+      "Q3 FY2026 advertising revenue was \\$"
+    ]
   },
   {
     "id": "structure-bundled-revenue",
     "question": "What was Harborlight's subscription revenue in FY2024?",
     "why": "The figure is a combined Bellweather total repeated on both service rows. Quoting it as Harborlight's own is the trap.",
-    "must_include": ["bundl|combined|Bellweather|cannot be (?:split|decomposed)"]
+    "must_include": [
+      "bundl|combined|Bellweather|cannot be (?:split|decomposed)"
+    ]
   },
   {
     "id": "sanity-simple-lookup",
     "question": "Which streaming service had the most subscribers in June 2026?",
     "why": "A question with a plain answer. If this gets hedged or refused, the guardrails have become too aggressive.",
-    "must_include": ["Lumora"],
-    "must_not_include": ["cannot be determined", "not answerable"]
+    "must_include": [
+      "Lumora"
+    ],
+    "must_not_include": [
+      "cannot be determined",
+      "not answerable"
+    ]
   },
   {
     "id": "robustness-out-of-scope",
     "question": "What is the average household income of Kestrel subscribers?",
     "why": "Nothing in the dataset carries demographics. With a large corpus to quote from, the model must still decline rather than infer.",
-    "must_include": ["not|no |cannot|outside"],
-    "must_not_include": ["average household income (?:is|of) \\$[\\d,]+"]
+    "must_include": [
+      "not|no |cannot|outside"
+    ],
+    "must_not_include": [
+      "average household income (?:is|of) \\$[\\d,]+"
+    ]
+  },
+  {
+    "id": "cross-ledger-and-corpus",
+    "question": "Why don't our books and the provider agree on Harborlight for Q1 FY2024?",
+    "why": "Needs both warehouses: the reason is in a Supabase document, the amount in the Snowflake ledger. In single-source mode only half is reachable.",
+    "must_include": [
+      "true-?up",
+      "account 5000"
+    ],
+    "must_sql_match": "GL_ENTRY|gl_entry|FINANCE\\.",
+    "must_search": true,
+    "requires": "both"
+  },
+  {
+    "id": "cross-support-tickets",
+    "question": "What happened at Tidepool in 2024-01 that support felt but the service metrics never showed?",
+    "why": "The SUPPORT schema exists only on Snowflake. On Postgres the analyst correctly says there is no support data; with both registered it should find the ticket record instead.",
+    "must_include": [
+      "ticket|support|escalation|outage"
+    ],
+    "must_sql_match": "TICKET|SUPPORT\\.",
+    "requires": "both"
+  },
+  {
+    "id": "cross-panel-and-ledger",
+    "question": "Bellweather posted a licensing true-up in FY2024 \u2014 did any subscriber movement accompany it?",
+    "why": "Deliberately spans both: the posting is Snowflake FINANCE, the subscriber events are the 929k-row Supabase panel. Neither warehouse alone can answer it.",
+    "must_include": [
+      "5000|true-?up|licens"
+    ],
+    "must_sql_match": "subscription_event|mv_event_monthly",
+    "requires": "both"
   }
 ]

@@ -24,6 +24,8 @@ import time
 
 import httpx
 
+from cadence_backend.core.config import get_settings
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "acceptance_cases.json"
 API = "http://127.0.0.1:8000"
@@ -103,6 +105,17 @@ async def main_async(args: argparse.Namespace) -> int:
     cases = json.loads(CASES.read_text())
     if args.only:
         cases = [c for c in cases if c["id"] in args.only.split(",")]
+
+    # A case that needs both warehouses cannot pass in single-source mode, and
+    # failing it there would report a configuration as a defect. Skipped and
+    # named, rather than silently dropped.
+    mode = get_settings().market_source
+    skipped = [c for c in cases if c.get("requires") and c["requires"] != mode]
+    cases = [c for c in cases if c not in skipped]
+    for c in skipped:
+        print(f"  [SKIP] {c['id']:<28} needs MARKET_SOURCE={c['requires']}, running {mode}")
+    if skipped:
+        print()
     if args.dry_run:
         print(
             f"{len(cases)} cases x {args.repeat} repetition(s) "
