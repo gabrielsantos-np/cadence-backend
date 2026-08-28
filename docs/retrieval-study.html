@@ -189,6 +189,14 @@
     margin: 0 0 0.25rem; letter-spacing: -0.01em;
   }
   .tile p { font-size: 0.85rem; color: var(--slate); margin: 0; }
+  .tile .path {
+    display: block; margin-top: 0.5rem;
+    font-family: var(--mono); font-size: 0.68rem; line-height: 1.5;
+    color: var(--accent); word-break: break-all;
+  }
+  .tile .path .none { color: var(--faint); }
+  .tile.shipped { border-left-color: var(--good); }
+  .tile.shipped .path { color: var(--good); }
 
   /* ---------- table ---------------------------------------------------- */
   .scroll { overflow-x: auto; margin: 0 0 0.9rem; }
@@ -419,16 +427,49 @@
     <h2>Nine approaches, from the obvious to the expensive</h2>
     <p class="lede">Ordered as we expected them to perform. Almost exactly backwards, as it turned out.</p>
     <div class="grid">
-      <div class="tile"><h3>Postgres full-text search</h3><p>Let the database do it. No new infrastructure.</p></div>
-      <div class="tile"><h3>BM25, in process</h3><p>Classic lexical ranking over an in-memory index.</p></div>
-      <div class="tile"><h3>Rank on the user's question</h3><p>Search with what was typed, not a paraphrase of it.</p></div>
-      <div class="tile"><h3>Deeper candidate pool</h3><p>Return 1,000 instead of 5 and look further down.</p></div>
-      <div class="tile"><h3>Cross-encoder reranking</h3><p>A model re-scores the shortlist for relevance.</p></div>
-      <div class="tile"><h3>Dense embeddings</h3><p>Vector similarity — the standard fix for wording mismatch.</p></div>
-      <div class="tile"><h3>Hybrid, RRF fusion</h3><p>Lexical precision plus semantic reach, combined by rank.</p></div>
-      <div class="tile"><h3>Multi-query rewriting</h3><p>Ask several ways, fuse the results.</p></div>
-      <div class="tile"><h3>HyDE + query stemming</h3><p>Write a hypothetical answer; match the index's word forms.</p></div>
+      <div class="tile"><h3>Postgres full-text search</h3><p>Let the database do it. No new infrastructure.</p>
+        <span class="path">retrieval/chunk_fts.py<br>retrieval/two_stage.py</span></div>
+      <div class="tile shipped"><h3>BM25, in process</h3><p>Classic lexical ranking over an in-memory index.</p>
+        <span class="path">retrieval/supabase_bm25.py</span></div>
+      <div class="tile shipped"><h3>Rank on the user's question</h3><p>Search with what was typed, not a paraphrase of it.</p>
+        <span class="path">sources/corpus.py<br>analyst/engine.py</span></div>
+      <div class="tile"><h3>Deeper candidate pool</h3><p>Return 1,000 instead of 5 and look further down.</p>
+        <span class="path"><span class="none">no module — a <code>k</code> argument</span><br>scripts/tune_retrieval.py</span></div>
+      <div class="tile"><h3>Cross-encoder reranking</h3><p>A model re-scores the shortlist for relevance.</p>
+        <span class="path">retrieval/retrievers.py · LLMRerank</span></div>
+      <div class="tile"><h3>Dense embeddings</h3><p>Vector similarity — the standard fix for wording mismatch.</p>
+        <span class="path">retrieval/retrievers.py · Dense<br>retrieval/embeddings.py</span></div>
+      <div class="tile"><h3>Hybrid, RRF fusion</h3><p>Lexical precision plus semantic reach, combined by rank.</p>
+        <span class="path">retrieval/retrievers.py · HybridRRF</span></div>
+      <div class="tile"><h3>Multi-query rewriting</h3><p>Ask several ways, fuse the results.</p>
+        <span class="path">scripts/gen_rewrites.py<br>scripts/tune_retrieval.py</span></div>
+      <div class="tile"><h3>HyDE + query stemming</h3><p>Write a hypothetical answer; match the index's word forms.</p>
+        <span class="path">scripts/gen_rewrites.py<br><span class="none">stemming: reverted, commit 18773cf</span></span></div>
     </div>
+    <details>
+      <summary>These are not peers in the codebase, and the difference is the point</summary>
+      <div class="dd">
+        <p>
+          Six of the nine are <code>Retriever</code> implementations sharing one
+          protocol in <code>retrieval/retrievers.py</code> — swap one for another and
+          nothing else changes. The grid above makes all nine look like that.
+        </p>
+        <p>
+          <strong>The two that shipped are not retrievers.</strong> Ranking on the
+          user's question is a decision in <code>sources/corpus.py</code> about
+          <em>which string to search with</em> — no new class, no new dependency.
+          That is why the winner cost nothing: it was never an implementation to add.
+        </p>
+        <p>
+          Two arms are also measured in <code>scripts/</code> rather than
+          <code>src/</code>. HyDE and the multi-query figures quoted here come from
+          <code>gen_rewrites.py</code> and <code>tune_retrieval.py</code>, not the
+          <code>MultiQuery</code> and <code>QueryRewrite</code> classes, which belong
+          to the earlier <code>bench_retrieval.py</code> harness and are no longer the
+          source of any number in this deck.
+        </p>
+      </div>
+    </details>
   </div>
 </section>
 
@@ -660,6 +701,15 @@
       spends a 1-in-5,000 signal on a term that matches everything. The fix is to
       stop doing that.
     </p>
+    <div class="panel good">
+      <span class="label">Where it lives — <code>src/cadence_backend/sources/corpus.py</code></span>
+      <p>
+        No new class and no new dependency. The ranking call already existed; it
+        was being handed the analyst's paraphrase, and now it is handed the
+        question. Every other approach on the list would have added a module, a
+        service or a per-query cost.
+      </p>
+    </div>
   </div>
 </section>
 
