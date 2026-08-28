@@ -95,9 +95,7 @@ def test_each_mode_registers_the_expected_warehouses(monkeypatch) -> None:
         "both": ["market", "bellweather"],
     }
     for mode, ids in expected.items():
-        monkeypatch.setattr(
-            config_module, "get_settings", lambda m=mode: settings(market_source=m)
-        )
+        monkeypatch.setattr(config_module, "get_settings", lambda m=mode: settings(market_source=m))
         monkeypatch.setattr(sources_module, "get_settings", config_module.get_settings)
         assert [s.id for s in sources_module._market_sources()] == ids, mode
 

@@ -11,6 +11,12 @@ frontend. The integration boundary is HTTP: the frontend depends on this API
 and its schemas, never on the database, the model provider, or anything behind
 them.
 
+## Docs
+
+- [`docs/retrieval-study.html`](docs/retrieval-study.html) — how the corpus is
+  searched, the nine approaches compared to get there, and why four of them were
+  ruled out. A self-contained slide deck; open it in a browser, no server needed.
+
 ## Requirements
 
 - Python 3.12 (pinned in `.python-version`)

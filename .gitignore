@@ -22,6 +22,11 @@ wheels/
 data/corpus/
 data/bench_results.json
 
+# Acceptance run output. The cases are the artefact and are tracked; a
+# particular run's results are a timestamp, and they contain the full text of
+# any failing answer.
+data/acceptance_results.json
+
 # Tooling caches
 .pytest_cache/
 .ruff_cache/

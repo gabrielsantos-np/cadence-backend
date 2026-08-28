@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence — retrieval study</title>
+<style>
+  /* Light is the base palette. Dark redefines tokens only, never components,
+     so nothing can end up with a colour that exists in one theme and not the
+     other. */
+  :root {
+    --paper:     #FAFBFC;
+    --card:      #FFFFFF;
+    --ink:       #17202E;
+    --slate:     #5B6779;
+    --faint:     #8A94A3;
+    --rule:      #DDE3EA;
+    --accent:    #0E6B75;
+    --accent-bg: #E6F1F2;
+    --good:      #1D6F42;
+    --good-bg:   #E4F0E9;
+    --warn:      #8A5A00;
+    --warn-bg:   #F6EEDD;
+    --bad:       #A32E28;
+    --bad-bg:    #F6E5E4;
+
+    --sans:  ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+    --mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #10141A;
+      --card:      #171C24;
+      --ink:       #E7EBF1;
+      --slate:     #9AA5B5;
+      --faint:     #6E7A8B;
+      --rule:      #262E3A;
+      --accent:    #55B9C3;
+      --accent-bg: #163034;
+      --good:      #63C08C;
+      --good-bg:   #16301F;
+      --warn:      #D8A63F;
+      --warn-bg:   #322614;
+      --bad:       #E38078;
+      --bad-bg:    #331B1A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:     #10141A;
+    --card:      #171C24;
+    --ink:       #E7EBF1;
+    --slate:     #9AA5B5;
+    --faint:     #6E7A8B;
+    --rule:      #262E3A;
+    --accent:    #55B9C3;
+    --accent-bg: #163034;
+    --good:      #63C08C;
+    --good-bg:   #16301F;
+    --warn:      #D8A63F;
+    --warn-bg:   #322614;
+    --bad:       #E38078;
+    --bad-bg:    #331B1A;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.6;
+    overflow: hidden;                 /* the deck never scrolls; slides do */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- chrome ------------------------------------------------- */
+  .bar {
+    position: fixed; left: 0; right: 0; z-index: 20;
+    display: flex; align-items: baseline; gap: 1rem;
+    padding: 0.9rem 1.6rem;
+    font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--faint);
+  }
+  .bar.top { top: 0; }
+  .bar.bottom { bottom: 0; }
+  .bar .deck { color: var(--accent); }
+  .bar .spacer { flex: 1; }
+  .counter { font-variant-numeric: tabular-nums; }
+  .hint { text-transform: none; letter-spacing: 0.02em; font-size: 0.68rem; }
+
+  .progress {
+    position: fixed; left: 0; bottom: 0; height: 2px; z-index: 21;
+    background: var(--accent);
+    transition: width 0.22s ease;
+  }
+
+  /* ---------- slides -------------------------------------------------- */
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    padding: 3.6rem 1.6rem 3.4rem;
+    overflow-y: auto;                 /* long slides scroll inside themselves */
+    overscroll-behavior: contain;
+  }
+  .slide.active { display: block; }
+  .inner {
+    max-width: 58rem;
+    margin: 0 auto;
+    min-height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 1.2rem 0;
+  }
+  .slide.title .inner { justify-content: center; }
+
+  .kicker {
+    font-family: var(--mono); font-size: 0.7rem;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700;
+    font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.05;
+    letter-spacing: -0.028em; margin: 0 0 1.1rem; text-wrap: balance;
+  }
+  h2 {
+    font-family: var(--sans); font-weight: 680;
+    font-size: clamp(1.35rem, 3.2vw, 2rem); line-height: 1.15;
+    letter-spacing: -0.022em; margin: 0 0 0.8rem; text-wrap: balance;
+  }
+  p { margin: 0 0 0.9rem; max-width: 46rem; }
+  .lede { font-size: 1.1rem; color: var(--slate); max-width: 42rem; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--accent-bg); color: var(--accent);
+    padding: 0.1em 0.36em; border-radius: 2px;
+  }
+  pre {
+    font-family: var(--mono); font-size: 0.84rem; line-height: 1.6;
+    background: var(--card); border: 1px solid var(--rule);
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1rem;
+  }
+  pre code { background: none; color: var(--ink); padding: 0; }
+
+  /* ---------- headline numbers ---------------------------------------- */
+  .figures {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 1px; background: var(--rule);
+    border: 1px solid var(--rule); margin: 1.6rem 0 0;
+  }
+  .figure { background: var(--card); padding: 1rem 1.05rem 1.1rem; }
+  .figure .n {
+    display: block; font-family: var(--mono);
+    font-variant-numeric: tabular-nums; font-size: 1.5rem;
+    font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .figure .l {
+    display: block; font-family: var(--sans); font-size: 0.74rem;
+    color: var(--slate); margin-top: 0.35rem; line-height: 1.35;
+  }
+  .big {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 600;
+    letter-spacing: -0.03em; line-height: 1; margin: 0.4rem 0 0.2rem;
+  }
+  .big .from { color: var(--bad); }
+  .big .to   { color: var(--good); }
+  .big .arrow { color: var(--faint); margin: 0 0.4rem; }
+
+  /* ---------- approach grid ------------------------------------------- */
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0.7rem; margin: 0.4rem 0 0;
+  }
+  .tile {
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 0.85rem 1rem;
+  }
+  .tile h3 {
+    font-family: var(--sans); font-size: 0.92rem; font-weight: 650;
+    margin: 0 0 0.25rem; letter-spacing: -0.01em;
+  }
+  .tile p { font-size: 0.85rem; color: var(--slate); margin: 0; }
+
+  /* ---------- table ---------------------------------------------------- */
+  .scroll { overflow-x: auto; margin: 0 0 0.9rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 46rem;
+          font-family: var(--sans); font-size: 0.82rem; }
+  th {
+    text-align: left; font-weight: 620; font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 0.6rem 0.45rem 0; vertical-align: bottom;
+  }
+  td {
+    padding: 0.55rem 0.6rem 0.55rem 0; border-bottom: 1px solid var(--rule);
+    vertical-align: top; line-height: 1.4;
+  }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.winner td { background: var(--good-bg); }
+  tr.winner td:first-child { font-weight: 680; }
+  .v { font-family: var(--mono); font-size: 0.68rem; font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .v-ship { color: var(--good); }
+  .v-dead { color: var(--bad); }
+  .v-no   { color: var(--warn); }
+
+  /* ---------- panels ---------------------------------------------------- */
+  .panel {
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    background: var(--card); padding: 1rem 1.15rem; margin: 0 0 0.9rem;
+  }
+  .panel.good { border-left-color: var(--good); background: var(--good-bg); }
+  .panel.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .panel.bad  { border-left-color: var(--bad);  background: var(--bad-bg); }
+  .panel .label {
+    display: block; font-family: var(--mono); font-size: 0.66rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--slate); margin-bottom: 0.45rem;
+  }
+  .panel.good .label { color: var(--good); }
+  .panel.warn .label { color: var(--warn); }
+  .panel.bad  .label { color: var(--bad); }
+  .panel p:last-child { margin-bottom: 0; }
+  .panel p { max-width: none; }
+
+  /* ---------- drill-down ------------------------------------------------ */
+  details {
+    border: 1px solid var(--rule); background: var(--card);
+    margin: 0.5rem 0 0;
+  }
+  summary {
+    cursor: pointer; list-style: none;
+    font-family: var(--sans); font-size: 0.8rem; color: var(--accent);
+    padding: 0.6rem 0.95rem;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸  "; }
+  details[open] > summary::before { content: "▾  "; }
+  details[open] > summary { border-bottom: 1px solid var(--rule); }
+  .dd { padding: 0.85rem 0.95rem; font-size: 0.9rem; }
+  .dd p { margin-bottom: 0.6rem; }
+  .dd p:last-child { margin-bottom: 0; }
+  .dd table { min-width: 0; font-size: 0.8rem; }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  /* ---------- overview -------------------------------------------------- */
+  #overview {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    background: var(--paper); padding: 3.4rem 1.6rem; overflow-y: auto;
+  }
+  #overview.open { display: block; }
+  .ov-grid {
+    max-width: 58rem; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: 0.6rem;
+  }
+  .ov-item {
+    text-align: left; cursor: pointer; font: inherit;
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 0.7rem 0.85rem; color: var(--ink);
+  }
+  .ov-item:hover { border-color: var(--accent); }
+  .ov-item .i {
+    font-family: var(--mono); font-size: 0.68rem; color: var(--faint);
+    display: block; margin-bottom: 0.2rem;
+  }
+  .ov-item .t {
+    font-family: var(--sans); font-size: 0.86rem; font-weight: 620;
+    letter-spacing: -0.01em; line-height: 1.3;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress { transition: none; }
+  }
+  @media (max-width: 40rem) {
+    body { font-size: 16px; }
+    .slide { padding: 3.2rem 1.1rem 3.2rem; }
+    .bar { padding: 0.8rem 1.1rem; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar top">
+  <span class="deck">Cadence · retrieval study</span>
+  <span class="spacer"></span>
+  <span id="slide-name"></span>
+</div>
+
+<div class="bar bottom">
+  <span class="hint">← → to move · Esc for contents</span>
+  <span class="spacer"></span>
+  <span class="counter"><span id="cur">1</span> / <span id="tot">12</span></span>
+</div>
+<div class="progress" id="progress"></div>
+
+<main id="deck">
+
+<!-- 01 ------------------------------------------------------------------ -->
+<section class="slide title" data-name="Result">
+  <div class="inner">
+    <p class="kicker">Retrieval study · measured 27 Aug 2026</p>
+    <h1>We compared nine ways to search 20,000 documents. The one that won was a deletion.</h1>
+    <div class="big">
+      <span class="from">0.102</span><span class="arrow">→</span><span class="to">0.459</span>
+    </div>
+    <p class="lede">
+      Recall@5 over 98 questions with known answers. The gain came from removing a
+      step — ranking on the user's question instead of the one the model wrote —
+      so the winner is faster and cheaper than what it replaced.
+    </p>
+    <div class="figures">
+      <div class="figure"><span class="n">9</span><span class="l">approaches measured</span></div>
+      <div class="figure"><span class="n">4</span><span class="l">ruled out on evidence</span></div>
+      <div class="figure"><span class="n">$0</span><span class="l">added running cost</span></div>
+      <div class="figure"><span class="n">1.9 s</span><span class="l">to re-run the whole comparison</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 ------------------------------------------------------------------ -->
+<section class="slide" data-name="The problem">
+  <div class="inner">
+    <p class="kicker">01 · the problem</p>
+    <h2>The same question, asked twice, gave two different answers</h2>
+    <p>
+      Cadence was asked why the books and the provider disagree on Harborlight for
+      Q1&nbsp;FY2024. The corpus contains the reason: a one-off catalogue licensing
+      true-up posted to account&nbsp;5000.
+    </p>
+    <p>
+      One run found it. The next, same model and same data, explained the variance
+      away as structural and never surfaced the document. That is not a bug you can
+      reproduce on demand, and not something you can demo.
+    </p>
+    <div class="panel bad">
+      <span class="label">Why it was hard to diagnose</span>
+      <p>
+        Two things were being measured at once: whether the retriever <em>can</em>
+        find the passage, and whether the model happened to word its search well.
+        Each end-to-end run took ~2.5 minutes and cost real money, so the sample
+        size was never large enough to separate them.
+      </p>
+    </div>
+    <details>
+      <summary>The two searches, side by side</summary>
+      <div class="dd">
+        <table>
+          <tr><td><strong>Run A</strong> — found it</td>
+              <td><code>Q1 FY2024 billing divergence Harborlight one-off catalogue licensing true-up account 5000</code></td></tr>
+          <tr><td><strong>Run B</strong> — missed it</td>
+              <td><code>Harborlight revenue discrepancy reconciliation internal books quarterly</code></td></tr>
+        </table>
+        <p style="margin-top:0.7rem">
+          Run A only knew those words because an earlier search had surfaced them.
+          The model was, in effect, getting lucky.
+        </p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- 03 ------------------------------------------------------------------ -->
+<section class="slide" data-name="How we measured">
+  <div class="inner">
+    <p class="kicker">02 · method</p>
+    <h2>Measure retrieval on its own, and make it cheap enough to repeat</h2>
+    <p>
+      The corpus was generated with <strong>120 facts planted at known character
+      offsets</strong>. A hit is verified by position, not judged — so the harness
+      can score every approach without a model in the loop, and without spending
+      anything.
+    </p>
+    <div class="figures">
+      <div class="figure"><span class="n">20,000</span><span class="l">documents → 119,207 chunks</span></div>
+      <div class="figure"><span class="n">98</span><span class="l">distinct questions, 197 planted spans</span></div>
+      <div class="figure"><span class="n">0.11 s</span><span class="l">to load the index, from 67&nbsp;s</span></div>
+      <div class="figure"><span class="n">1.9 s</span><span class="l">to score all 98 questions</span></div>
+    </div>
+    <details>
+      <summary>Two decisions that made the numbers trustworthy</summary>
+      <div class="dd">
+        <p>
+          <strong>Caching the index.</strong> Building it from the database reads
+          119&nbsp;MB of parsed text and takes 67&nbsp;seconds. Cached, it reloads in
+          0.11&nbsp;seconds — verified to produce an identical ranking, not assumed
+          to. That is the difference between an experiment a day and an experiment
+          a minute, and it is why nine approaches got measured instead of two.
+        </p>
+        <p>
+          <strong>Unioning ground truth per question.</strong> Several questions have
+          the same fact planted in different documents. Scoring those rows separately
+          would count a correct retrieval of one copy as a miss on its siblings, and
+          understate every approach equally — which looks like a fair comparison and
+          is not.
+        </p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- 04 ------------------------------------------------------------------ -->
+<section class="slide" data-name="The nine approaches">
+  <div class="inner">
+    <p class="kicker">03 · the field</p>
+    <h2>Nine approaches, from the obvious to the expensive</h2>
+    <p class="lede">Ordered as we expected them to perform. Almost exactly backwards, as it turned out.</p>
+    <div class="grid">
+      <div class="tile"><h3>Postgres full-text search</h3><p>Let the database do it. No new infrastructure.</p></div>
+      <div class="tile"><h3>BM25, in process</h3><p>Classic lexical ranking over an in-memory index.</p></div>
+      <div class="tile"><h3>Rank on the user's question</h3><p>Search with what was typed, not a paraphrase of it.</p></div>
+      <div class="tile"><h3>Deeper candidate pool</h3><p>Return 1,000 instead of 5 and look further down.</p></div>
+      <div class="tile"><h3>Cross-encoder reranking</h3><p>A model re-scores the shortlist for relevance.</p></div>
+      <div class="tile"><h3>Dense embeddings</h3><p>Vector similarity — the standard fix for wording mismatch.</p></div>
+      <div class="tile"><h3>Hybrid, RRF fusion</h3><p>Lexical precision plus semantic reach, combined by rank.</p></div>
+      <div class="tile"><h3>Multi-query rewriting</h3><p>Ask several ways, fuse the results.</p></div>
+      <div class="tile"><h3>HyDE + query stemming</h3><p>Write a hypothetical answer; match the index's word forms.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 ------------------------------------------------------------------ -->
+<section class="slide" data-name="Comparison">
+  <div class="inner">
+    <p class="kicker">04 · comparison</p>
+    <h2>What each one actually bought</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:13rem">Approach</th>
+            <th class="num">R@5</th>
+            <th>Cost</th>
+            <th>Pro</th>
+            <th>Con</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Postgres full-text search</td>
+            <td class="num">0.023</td>
+            <td>free</td>
+            <td>No new infrastructure; the index already existed.</td>
+            <td>4,248&nbsp;ms per query. Only 1,339 distinct terms, so nothing is selective enough to narrow on.</td>
+            <td class="v v-dead">ruled out</td>
+          </tr>
+          <tr>
+            <td>BM25, in process</td>
+            <td class="num">0.419</td>
+            <td>76&nbsp;MB RAM</td>
+            <td>18× the recall of the database at 1/25 the latency (168&nbsp;ms).</td>
+            <td>Needs the index in memory; 71&nbsp;s to build at startup.</td>
+            <td class="v v-ship">kept</td>
+          </tr>
+          <tr class="winner">
+            <td>Rank on the user's question</td>
+            <td class="num">0.459</td>
+            <td>free</td>
+            <td>Keeps the entity and period terms exactly as typed. Removes a step, so it is faster and cheaper than what it replaced.</td>
+            <td>Follow-up questions carry less context than a model-composed query would.</td>
+            <td class="v v-ship">shipped</td>
+          </tr>
+          <tr>
+            <td>Deeper candidate pool</td>
+            <td class="num">0.490 <span style="color:var(--faint)">@1000</span></td>
+            <td>slower</td>
+            <td>Trivial to try; one constant to change.</td>
+            <td>A 200× deeper pool buys 3 points. The passage is simply absent, not ranked low.</td>
+            <td class="v v-no">not worth it</td>
+          </tr>
+          <tr>
+            <td>Cross-encoder reranking</td>
+            <td class="num">—</td>
+            <td>$9.13 / 1k</td>
+            <td>Genuinely understands paraphrase, unlike any lexical method.</td>
+            <td>Can only reorder what it is handed, and the target is not in the pool to reorder.</td>
+            <td class="v v-dead">ruled out</td>
+          </tr>
+          <tr>
+            <td>Dense embeddings, 256-dim</td>
+            <td class="num">0.041 <span style="color:var(--faint)">@10</span></td>
+            <td>~$1 to embed</td>
+            <td>The textbook fix for exactly this failure mode.</td>
+            <td>This corpus is templated — every chunk looks alike semantically, so there is little to separate.</td>
+            <td class="v v-dead">ruled out</td>
+          </tr>
+          <tr>
+            <td>Hybrid BM25 + dense</td>
+            <td class="num">0.469 <span style="color:var(--faint)">ceiling</span></td>
+            <td>+ index infra</td>
+            <td>Should combine lexical precision with semantic reach.</td>
+            <td>Dense finds <strong>one</strong> question of 98 that BM25 misses. There is nothing to combine.</td>
+            <td class="v v-dead">ruled out</td>
+          </tr>
+          <tr>
+            <td>Multi-query rewriting</td>
+            <td class="num">0.408</td>
+            <td>+1 call/query</td>
+            <td>Lifts recall@10 to 0.500 by widening the net.</td>
+            <td>Dilutes the top five — and only six results are ever returned.</td>
+            <td class="v v-no">worse where it counts</td>
+          </tr>
+          <tr>
+            <td>HyDE</td>
+            <td class="num">0.439</td>
+            <td>+1 call/query</td>
+            <td>Closest in spirit to handing the retriever the answer.</td>
+            <td>Invents plausible wrong specifics, which match confidently against the wrong passage.</td>
+            <td class="v v-no">worse</td>
+          </tr>
+          <tr>
+            <td>Query stemming</td>
+            <td class="num">0.459</td>
+            <td>+1 dependency</td>
+            <td>Fixes a genuine bug in how query terms are matched.</td>
+            <td>Measured <em>worse</em> at the ceiling. The stems it newly reaches sit in 98% of chunks.</td>
+            <td class="v v-dead">reverted</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:0.85rem;color:var(--slate);max-width:none">
+      Recall@5 over 98 planted questions. Blank where the approach cannot be scored
+      at that depth — reranking never had a pool to work on.
+    </p>
+  </div>
+</section>
+
+<!-- 06 ------------------------------------------------------------------ -->
+<section class="slide" data-name="Reranking is dead">
+  <div class="inner">
+    <p class="kicker">05 · dead end</p>
+    <h2>Reranking and deeper pools were killed by one measurement</h2>
+    <p>How deep do you have to look before the right passage appears?</p>
+    <div class="figures">
+      <div class="figure"><span class="n">0.459</span><span class="l">top 5</span></div>
+      <div class="figure"><span class="n">0.459</span><span class="l">top 50</span></div>
+      <div class="figure"><span class="n">0.469</span><span class="l">top 100</span></div>
+      <div class="figure"><span class="n">0.490</span><span class="l">top 1,000</span></div>
+    </div>
+    <div class="panel bad" style="margin-top:1.2rem">
+      <span class="label">What this rules out</span>
+      <p>
+        A 200× deeper pool buys three points. For over half the questions the
+        passage is <strong>not in the top thousand at all</strong> — it is absent,
+        not ranked low. A reranker can only reorder what it is given, so no
+        reranking budget could have recovered it. Neither could a larger
+        <code>TOP_K</code>, which is free.
+      </p>
+    </div>
+    <p style="font-size:0.9rem;color:var(--slate)">
+      This is the single most valuable result in the study: it ruled out the most
+      expensive option on the list before a cent was spent on it.
+    </p>
+  </div>
+</section>
+
+<!-- 07 ------------------------------------------------------------------ -->
+<section class="slide" data-name="Dense is dead">
+  <div class="inner">
+    <p class="kicker">06 · dead end</p>
+    <h2>Embeddings did not help, and hybrid had nothing to fuse</h2>
+    <p>
+      The question that decides hybrid retrieval is not <em>is dense good</em>, but
+      <em>is dense different</em>. If it finds the same half that BM25 finds,
+      combining them gains nothing.
+    </p>
+    <div class="figures">
+      <div class="figure"><span class="n">42</span><span class="l">found by BM25 only</span></div>
+      <div class="figure"><span class="n">1</span><span class="l">found by dense only</span></div>
+      <div class="figure"><span class="n">3</span><span class="l">found by both</span></div>
+      <div class="figure"><span class="n">52</span><span class="l">found by neither</span></div>
+    </div>
+    <div class="panel warn" style="margin-top:1.2rem">
+      <span class="label">Do not generalise this</span>
+      <p>
+        Dense retrieval failed <strong>here</strong>, for a reason specific to this
+        corpus: 20,000 documents generated from templates share only
+        <strong>1,339 distinct terms</strong>, so chunks are nearly identical in
+        meaning and embeddings have little to separate. On heterogeneous
+        real-world prose the result would likely be very different. This is not
+        evidence that embeddings don't work.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 08 ------------------------------------------------------------------ -->
+<section class="slide" data-name="Rewriting is dead">
+  <div class="inner">
+    <p class="kicker">07 · dead end</p>
+    <h2>Rewriting the query made it worse — including the fix we nearly shipped</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:16rem">Variant</th><th class="num">R@5</th><th class="num">R@10</th><th>Outcome</th></tr></thead>
+        <tbody>
+          <tr class="winner"><td>the question, unchanged</td><td class="num">0.459</td><td class="num">0.459</td><td>baseline</td></tr>
+          <tr><td>+ 3 model paraphrases</td><td class="num">0.408</td><td class="num">0.490</td><td>worse at the depth that matters</td></tr>
+          <tr><td>+ hypothetical answer (HyDE)</td><td class="num">0.439</td><td class="num">0.469</td><td>worse</td></tr>
+          <tr><td>+ both, fused</td><td class="num">0.439</td><td class="num">0.500</td><td>worse at 5, better at 10</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel warn">
+      <span class="label">The one I would have shipped on reasoning alone</span>
+      <p>
+        Query terms are matched against an index that stores stemmed words, and the
+        matching logic reached <code>catalogu</code> from <code>catalogue</code> but
+        never <code>bill</code> from <code>billing</code> — silently dropping the most
+        selective term in the query. A real bug, with an obvious fix.
+      </p>
+      <p>
+        Fixing it properly measured <strong>worse</strong>: 0.714 → 0.694 at the
+        ceiling, because the stems it newly reached sit in 98% of chunks. Reverted,
+        dependency removed. Nothing but a measurement would have caught that.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 09 ------------------------------------------------------------------ -->
+<section class="slide" data-name="What won">
+  <div class="inner">
+    <p class="kicker">08 · the winner</p>
+    <h2>Search with the question the user typed</h2>
+    <div class="big">
+      <span class="from">0.102</span><span class="arrow">→</span><span class="to">0.459</span>
+    </div>
+    <p>
+      The analyst was composing its own search query, and that query was replacing
+      the two sharpest tokens available with vaguer synonyms.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:11rem">Term</th><th class="num">Chunks containing it</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><code>q1</code></td><td class="num">24 of 119,207</td><td>near-unique — pins the quarter</td></tr>
+          <tr><td><code>fy2024</code></td><td class="num">40 of 119,207</td><td>near-unique — pins the year</td></tr>
+          <tr><td><code>harborlight</code></td><td class="num">11,645</td><td>useful, not decisive</td></tr>
+          <tr><td><code>2025</code></td><td class="num">57,748</td><td>matches half the corpus</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Paraphrasing <em>&ldquo;Q1 FY2024&rdquo;</em> into <em>&ldquo;the first quarter&rdquo;</em>
+      spends a 1-in-5,000 signal on a term that matches everything. The fix is to
+      stop doing that.
+    </p>
+  </div>
+</section>
+
+<!-- 10 ----------------------------------------------------------------- -->
+<section class="slide" data-name="Recommendation">
+  <div class="inner">
+    <p class="kicker">09 · recommendation</p>
+    <h2>Ship the deletion. Buy nothing.</h2>
+    <div class="panel good">
+      <span class="label">Adopt — done</span>
+      <p>
+        Rank the corpus on the user's question. <strong>4.5× the recall</strong>, no
+        added latency, no added cost, one fewer moving part than the code it
+        replaced. Verified end to end: the answer now names the account-5000
+        true-up that it used to find only intermittently.
+      </p>
+    </div>
+    <div class="panel">
+      <span class="label">Do not buy</span>
+      <p>
+        Reranking, embedding infrastructure, hybrid indexes and per-query rewrite
+        calls were each measured against this workload. None moved it. Together
+        they would have added recurring cost and two new failure modes for no gain.
+      </p>
+    </div>
+    <div class="panel">
+      <span class="label">Invest here instead</span>
+      <p>
+        The remaining gap is <strong>vocabulary, not ranking</strong>. Users write
+        &ldquo;our books and the provider disagree&rdquo;; documents say &ldquo;billing
+        divergence&rdquo;. Handing the retriever the answer's own words lifts recall to
+        0.714, so that is the headroom — and it is closed by changing what the
+        documents say or by capturing better questions, not by ranking harder.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 ----------------------------------------------------------------- -->
+<section class="slide" data-name="Known limits">
+  <div class="inner">
+    <p class="kicker">10 · limits</p>
+    <h2>What this does not fix</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:19rem">Question style</th><th class="num">Found</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Carries an exact period label<br><span style="color:var(--slate)">&ldquo;…for Q1 FY2024?&rdquo;</span></td>
+              <td class="num">44 / 44</td>
+              <td>Two near-unique tokens pin the passage.</td></tr>
+          <tr><td>Conversational<br><span style="color:var(--slate)">&ldquo;did we lose that many customers around 2025-04?&rdquo;</span></td>
+              <td class="num">0 / 29</td>
+              <td>Shares no selective term with the passage, which says &ldquo;cancellation spike&rdquo; and &ldquo;migration&rdquo;.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel warn">
+      <span class="label">Open, and undiagnosed</span>
+      <p>
+        28 questions are unfindable <em>even when handed the exact answer text</em> as
+        the query. Until that is understood, treat <strong>0.714 as a soft
+        ceiling</strong> rather than a known one.
+      </p>
+    </div>
+    <p style="font-size:0.9rem;color:var(--slate)">
+      Practical consequence: the product can make promises about questions that name
+      a period. It cannot yet make them about loosely-worded ones.
+    </p>
+  </div>
+</section>
+
+<!-- 12 ----------------------------------------------------------------- -->
+<section class="slide" data-name="Reproduce">
+  <div class="inner">
+    <p class="kicker">11 · reproduce</p>
+    <h2>Every figure in this deck, from three commands</h2>
+<pre><code># regression tests — offline, no model, no network, 1.3s
+uv run pytest tests/test_retrieval_quality.py
+
+# build the index cache once (67s), then score any approach in 1.9s
+uv run python scripts/cache_index.py
+uv run python scripts/tune_retrieval.py --arms bm25 --depth 1000
+
+# end-to-end against a live backend — costs ~$0.35 and ~2 min per case
+uv run python scripts/acceptance.py --dry-run</code></pre>
+    <p>
+      The harness lives in <code>scripts/tune_retrieval.py</code>; ground truth is
+      generated by <code>scripts/generate_corpus.py</code> from a fixed seed, so the
+      corpus and every number here rebuild identically.
+    </p>
+    <p style="font-size:0.85rem;color:var(--slate)">
+      Figures measured 27 August 2026 against 20,000 documents / 119,207 chunks /
+      98 planted questions. The retrieval floors are pinned in
+      <code>tests/test_retrieval_quality.py</code>, so if a change moves them, the
+      test suite says so.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<div id="overview" role="dialog" aria-label="Slide contents" aria-modal="true">
+  <div class="ov-grid" id="ov-grid"></div>
+</div>
+
+<script>
+(function () {
+  var slides   = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var overview = document.getElementById('overview');
+  var grid     = document.getElementById('ov-grid');
+  var progress = document.getElementById('progress');
+  var curEl    = document.getElementById('cur');
+  var nameEl   = document.getElementById('slide-name');
+  var i        = 0;
+
+  document.getElementById('tot').textContent = slides.length;
+
+  slides.forEach(function (s, n) {
+    var b = document.createElement('button');
+    b.className = 'ov-item';
+    b.innerHTML = '<span class="i">' + String(n + 1).padStart(2, '0') + '</span>' +
+                  '<span class="t"></span>';
+    b.querySelector('.t').textContent = s.dataset.name || ('Slide ' + (n + 1));
+    b.addEventListener('click', function () { closeOverview(); show(n); });
+    grid.appendChild(b);
+  });
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    slides[i].scrollTop = 0;
+    curEl.textContent = i + 1;
+    nameEl.textContent = slides[i].dataset.name || '';
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+    // replaceState, not a hash assignment: a deck should not fill the back
+    // button with twelve entries on the way through.
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+
+  function openOverview()  { overview.classList.add('open'); grid.children[i].focus(); }
+  function closeOverview() { overview.classList.remove('open'); }
+  function overviewOpen()  { return overview.classList.contains('open'); }
+
+  // Space toggles a focused <summary> natively, so advancing the slide on it
+  // too would open an evidence block and immediately navigate away from it.
+  // Only Space is guarded: left and right arrows do not scroll or activate
+  // anything inside a <details>, and blocking them stranded the presenter on
+  // whichever slide they had last expanded something on.
+  function insideDetails(el) {
+    while (el && el !== document.body) {
+      if (el.tagName === 'DETAILS' || el.tagName === 'SUMMARY') return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      overviewOpen() ? closeOverview() : openOverview();
+      return;
+    }
+    if (overviewOpen()) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') return; // let Tab roam
+      return;
+    }
+    if (e.key === ' ' && insideDetails(document.activeElement)) return;
+
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ':
+        e.preventDefault(); show(i + 1); break;
+      case 'ArrowLeft': case 'PageUp':
+        e.preventDefault(); show(i - 1); break;
+      case 'Home': e.preventDefault(); show(0); break;
+      case 'End':  e.preventDefault(); show(slides.length - 1); break;
+    }
+  });
+
+  // Click zones on the outer thirds. Anything interactive keeps its own click.
+  document.getElementById('deck').addEventListener('click', function (e) {
+    if (e.target.closest('a, summary, details, button, pre, code, table')) return;
+    var third = window.innerWidth / 3;
+    if (e.clientX < third) show(i - 1);
+    else if (e.clientX > third * 2) show(i + 1);
+  });
+
+  overview.addEventListener('click', function (e) {
+    if (e.target === overview) closeOverview();
+  });
+
+  function fromHash() {
+    var n = parseInt((location.hash || '').replace('#', ''), 10);
+    return isNaN(n) ? 0 : n - 1;
+  }
+
+  // Deep links have to work on a page that is already open, not only on load:
+  // pasting "#9" to a colleague who has the deck up changes the hash without
+  // reloading, and without this the URL and the slide disagree.
+  window.addEventListener('hashchange', function () {
+    if (fromHash() !== i) show(fromHash());
+  });
+
+  show(fromHash());
+})();
+</script>
+</body>
+</html>
