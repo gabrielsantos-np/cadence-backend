@@ -72,3 +72,39 @@ def test_secrets_are_not_in_the_repr() -> None:
     assert "supersecret" not in str(s)
     # Still reachable deliberately, at the call site that needs it.
     assert s.openrouter_api_key.get_secret_value() == "sk-or-supersecret"
+
+
+# --------------------------------------------------------------------------
+# Warehouse registration. The two SQL sources were built as drop-in
+# replacements and both answered to the id "market", which is precisely why
+# they could not be registered together.
+# --------------------------------------------------------------------------
+
+
+def test_market_source_accepts_both() -> None:
+    assert settings(market_source="both").market_source == "both"
+
+
+def test_each_mode_registers_the_expected_warehouses(monkeypatch) -> None:
+    import cadence_backend.core.config as config_module
+    import cadence_backend.sources as sources_module
+
+    expected = {
+        "postgres": ["market"],
+        "snowflake": ["bellweather"],
+        "both": ["market", "bellweather"],
+    }
+    for mode, ids in expected.items():
+        monkeypatch.setattr(
+            config_module, "get_settings", lambda m=mode: settings(market_source=m)
+        )
+        monkeypatch.setattr(sources_module, "get_settings", config_module.get_settings)
+        assert [s.id for s in sources_module._market_sources()] == ids, mode
+
+
+def test_the_two_warehouses_have_distinct_ids() -> None:
+    """Colliding ids would make find_sql_source return whichever came first."""
+    from cadence_backend.sources.market import market_source
+    from cadence_backend.sources.snowflake import snowflake_source
+
+    assert market_source.id != snowflake_source.id

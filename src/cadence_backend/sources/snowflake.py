@@ -64,7 +64,7 @@ def _query_blocking(sql: str) -> SqlOutcome:
 
 
 class SnowflakeSource:
-    id = "market"
+    id = "bellweather"
     kind: Literal["sql"] = "sql"
     name = "Bellweather warehouse"
     description = (

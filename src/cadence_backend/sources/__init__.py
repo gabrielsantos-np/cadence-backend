@@ -17,27 +17,37 @@ from cadence_backend.sources.notes import notes_source
 from cadence_backend.sources.types import DataSource, DocumentSource, SqlSource
 
 
-def _market_source() -> SqlSource:
-    """The market dataset, from whichever warehouse is configured.
+def _market_sources() -> list[SqlSource]:
+    """The SQL warehouses the analyst can reach, per MARKET_SOURCE.
 
-    One SQL source at a time, deliberately. Registering both would put both
-    schemas in every prompt and make the model choose, which changes how it
-    answers — the point of the switch is to compare like with like.
+    `postgres` and `snowflake` register one each, which is what the migration
+    comparison needed: same question, same prompt, one variable.
+
+    `both` registers them together, and that is a different thing rather than a
+    superset. The two warehouses hold different halves of the dataset — the
+    929k-row panel and the document corpus are on Supabase, the general ledger
+    and the helpdesk are on Snowflake — so a question spanning them is only
+    answerable with both registered. The cost is roughly 4,200 tokens of schema
+    in every prompt instead of 1,500 or 2,700, and a model that now has to
+    choose. `build_source_context` tells it how.
     """
-    if get_settings().market_source == "snowflake":
+    mode = get_settings().market_source
+    sources: list[SqlSource] = []
+    if mode in ("postgres", "both"):
+        from cadence_backend.sources.market import market_source
+
+        sources.append(market_source)
+    if mode in ("snowflake", "both"):
         from cadence_backend.sources.snowflake import snowflake_source
 
-        return snowflake_source
-
-    from cadence_backend.sources.market import market_source
-
-    return market_source
+        sources.append(snowflake_source)
+    return sources
 
 
 # The curated notes stay alongside the corpus rather than being folded into
 # it. They are short methodology guidance the analyst leans on for the refusal
 # cases, and twenty thousand documents of market prose would bury them.
-SOURCES: list[DataSource] = [_market_source(), notes_source, corpus_source]
+SOURCES: list[DataSource] = [*_market_sources(), notes_source, corpus_source]
 
 __all__ = [
     "SOURCES",
@@ -76,10 +86,38 @@ def find_document_source(source_id: str) -> DocumentSource:
     raise ValueError(f'Unknown document source "{source_id}". Available: {available}.')
 
 
+#: Guidance that only applies when both warehouses are registered. The market
+#: census is duplicated across them, so without this the model picks by chance
+#: and two runs of the same question can cite different sources for one figure.
+#: Everything named here is a real asymmetry, not a preference.
+_BOTH_SOURCES_NOTE = """
+## Choosing between `market` and `bellweather`
+
+Both carry the same bought-in market census, and for those tables they agree.
+They differ in what only one of them has:
+
+- `market` (Supabase) alone has `subscription_event`, the 929k-row 1-in-281
+  panel of individual signups, cancels and plan changes, and `mv_event_monthly`,
+  its pre-scaled monthly rollup. Anything about *why* a subscriber moved, or any
+  count of events, has to come from here.
+- `bellweather` (Snowflake) alone has FINANCE and SUPPORT — the general ledger
+  and the helpdesk for the two services Bellweather operates. Anything about
+  postings, accounts, tickets or resolution times has to come from here.
+
+Prefer `market` for the census and anything panel-derived, so figures in one
+answer are drawn consistently. Use `bellweather` for ledger and support
+questions, and for the market census only when joining it to those in one query.
+Questions that need both — a billing variance explained by a ledger posting and
+checked against subscriber movement — should query each for its own half rather
+than looking for one source that has everything.
+"""
+
+
 def build_source_context() -> str:
     """The source catalogue and every SQL schema, assembled for the prompt."""
     catalogue = "\n".join(f"- {s.id} ({s.kind}) — {s.name}. {s.description}" for s in SOURCES)
     schemas = "\n\n".join(
         f"## Source `{s.id}` — {s.name}\n\n{s.schema_context}" for s in sql_sources()
     )
-    return f"# Available sources\n\n{catalogue}\n\n{schemas}"
+    routing = _BOTH_SOURCES_NOTE if len(sql_sources()) > 1 else ""
+    return f"# Available sources\n\n{catalogue}\n{routing}\n{schemas}"

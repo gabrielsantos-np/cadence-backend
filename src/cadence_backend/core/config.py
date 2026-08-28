@@ -65,9 +65,20 @@ class Settings(BaseSettings):
     #: Prefixed, because OpenRouter routes by provider.
     embedding_model: str = "openai/text-embedding-3-small"
 
-    # Which warehouse the analyst queries for market data: "postgres" or
-    # "snowflake". Conversation storage is always Postgres either way.
-    market_source: Literal["postgres", "snowflake"] = "postgres"
+    # Which SQL warehouses the analyst can reach.
+    #
+    #   postgres  — Supabase only: the panel event log (929k rows), the
+    #               materialised monthly rollup and the market census.
+    #   snowflake — Snowflake only: the same market census plus FINANCE and
+    #               SUPPORT, which exist nowhere else.
+    #   both      — both registered at once. The two warehouses hold different
+    #               halves of the story: the events and the corpus are on
+    #               Supabase, the ledger and the helpdesk are on Snowflake, and
+    #               questions that need both can only be answered here.
+    #
+    # Conversation storage and the document corpus are always Supabase, whatever
+    # this is set to — they are read through a different pool.
+    market_source: Literal["postgres", "snowflake", "both"] = "postgres"
 
     # Snowflake, used when market_source is "snowflake".
     #
