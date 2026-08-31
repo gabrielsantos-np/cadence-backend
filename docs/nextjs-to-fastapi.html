@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next.js → FastAPI, for people who know Next.js</title>
+<style>
+  :root {
+    --paper:     #FAFBFC;
+    --card:      #FFFFFF;
+    --code:      #F4F6F8;
+    --ink:       #17202E;
+    --slate:     #5B6779;
+    --faint:     #8A94A3;
+    --rule:      #DDE3EA;
+    --accent:    #0E6B75;
+    --accent-bg: #E6F1F2;
+    --ts:        #2B6CB0;
+    --ts-bg:     #E8F0F8;
+    --py:        #1D6F42;
+    --py-bg:     #E4F0E9;
+    --warn:      #8A5A00;
+    --warn-bg:   #F6EEDD;
+
+    --sans:  ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+    --mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:     #10141A;
+      --card:      #171C24;
+      --code:      #12171E;
+      --ink:       #E7EBF1;
+      --slate:     #9AA5B5;
+      --faint:     #6E7A8B;
+      --rule:      #262E3A;
+      --accent:    #55B9C3;
+      --accent-bg: #163034;
+      --ts:        #7FB3E8;
+      --ts-bg:     #16232F;
+      --py:        #63C08C;
+      --py-bg:     #16301F;
+      --warn:      #D8A63F;
+      --warn-bg:   #322614;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:     #10141A;
+    --card:      #171C24;
+    --code:      #12171E;
+    --ink:       #E7EBF1;
+    --slate:     #9AA5B5;
+    --faint:     #6E7A8B;
+    --rule:      #262E3A;
+    --accent:    #55B9C3;
+    --accent-bg: #163034;
+    --ts:        #7FB3E8;
+    --ts-bg:     #16232F;
+    --py:        #63C08C;
+    --py-bg:     #16301F;
+    --warn:      #D8A63F;
+    --warn-bg:   #322614;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--serif); font-size: 17px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .layout {
+    max-width: 78rem; margin: 0 auto; padding: 0 1.5rem 6rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 3rem;
+  }
+  @media (max-width: 62rem) { .layout { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---- table of contents ------------------------------------------- */
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh;
+            overflow-y: auto; padding: 2.5rem 0 2rem; }
+  @media (max-width: 62rem) {
+    nav.toc { position: static; max-height: none; border-bottom: 1px solid var(--rule);
+              margin-bottom: 2rem; }
+  }
+  nav.toc .title {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 0.9rem;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav.toc li { counter-increment: s; margin-bottom: 0.15rem; }
+  nav.toc a {
+    display: block; text-decoration: none; color: var(--slate);
+    font-family: var(--sans); font-size: 0.82rem; line-height: 1.35;
+    padding: 0.3rem 0.5rem 0.3rem 2.1rem; position: relative; border-radius: 3px;
+  }
+  nav.toc a::before {
+    content: counter(s, decimal-leading-zero);
+    position: absolute; left: 0.5rem; font-family: var(--mono);
+    font-size: 0.7rem; color: var(--faint);
+  }
+  nav.toc a:hover { color: var(--ink); background: var(--accent-bg); }
+
+  /* ---- header ------------------------------------------------------- */
+  header.top { padding: 3.5rem 0 2rem; border-bottom: 2px solid var(--ink); margin-bottom: 1rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; letter-spacing: -0.028em;
+    font-size: clamp(1.9rem, 4.4vw, 2.7rem); line-height: 1.08;
+    margin: 0 0 1rem; text-wrap: balance;
+  }
+  .standfirst { font-size: 1.08rem; color: var(--slate); max-width: 42rem; margin: 0; }
+
+  section { padding-top: 3rem; scroll-margin-top: 1.5rem; }
+  h2 {
+    font-family: var(--sans); font-weight: 680; letter-spacing: -0.022em;
+    font-size: 1.4rem; margin: 0 0 0.2rem; text-wrap: balance;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--faint);
+    font-weight: 400; margin-right: 0.6rem;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 650; font-size: 1rem;
+    margin: 1.6rem 0 0.5rem; letter-spacing: -0.01em;
+  }
+  p { margin: 0 0 0.9rem; max-width: 44rem; }
+  .sub { color: var(--slate); margin: 0 0 1.4rem; max-width: 44rem; }
+  ul { max-width: 44rem; padding-left: 1.2rem; }
+  li { margin-bottom: 0.4rem; }
+
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--accent-bg); color: var(--accent);
+    padding: 0.1em 0.34em; border-radius: 2px;
+  }
+
+  /* ---- side-by-side code -------------------------------------------- */
+  .pair {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem;
+    margin: 0 0 1.1rem;
+  }
+  @media (max-width: 56rem) { .pair { grid-template-columns: 1fr; } }
+  .pane { border: 1px solid var(--rule); background: var(--card); min-width: 0; }
+  .pane .head {
+    display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap;
+    padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.68rem;
+  }
+  .tag {
+    font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.1rem 0.35rem; border-radius: 2px;
+  }
+  .pane.ts .tag { color: var(--ts); background: var(--ts-bg); }
+  .pane.py .tag { color: var(--py); background: var(--py-bg); }
+  .pane .file { color: var(--faint); word-break: break-all; }
+  .pane pre {
+    margin: 0; padding: 0.8rem; overflow-x: auto;
+    font-family: var(--mono); font-size: 0.76rem; line-height: 1.62;
+    background: var(--code);
+  }
+  .pane pre code { background: none; color: var(--ink); padding: 0; font-size: inherit; }
+
+  pre.solo {
+    border: 1px solid var(--rule); background: var(--code);
+    padding: 0.85rem 1rem; overflow-x: auto; margin: 0 0 1.1rem;
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.62;
+  }
+  pre.solo code { background: none; color: var(--ink); padding: 0; font-size: inherit; }
+
+  /* ---- the "why" note ------------------------------------------------ */
+  .why {
+    border-left: 3px solid var(--accent); background: var(--card);
+    border-top: 1px solid var(--rule); border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 0.9rem 1.1rem; margin: 0 0 1.1rem; max-width: 46rem;
+  }
+  .why .label {
+    display: block; font-family: var(--mono); font-size: 0.64rem;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+  .why p { margin: 0 0 0.6rem; max-width: none; font-size: 0.94rem; }
+  .why p:last-child { margin-bottom: 0; }
+  .why.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .why.warn .label { color: var(--warn); }
+
+  /* ---- tables --------------------------------------------------------- */
+  .scroll { overflow-x: auto; margin: 0 0 1.1rem; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem;
+          font-family: var(--sans); font-size: 0.85rem; }
+  th {
+    text-align: left; font-weight: 620; font-size: 0.68rem;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--slate);
+    border-bottom: 1.5px solid var(--ink); padding: 0 0.7rem 0.45rem 0;
+  }
+  td { padding: 0.5rem 0.7rem 0.5rem 0; border-bottom: 1px solid var(--rule);
+       vertical-align: top; line-height: 1.45; }
+  td code { font-size: 0.82em; }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.4rem; border-top: 1px solid var(--rule);
+    font-family: var(--sans); font-size: 0.8rem; color: var(--faint);
+    max-width: 44rem;
+  }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="toc">
+  <div class="title">Contents</div>
+  <ol>
+    <li><a href="#shape">Shape of the thing</a></li>
+    <li><a href="#toolchain">Toolchain</a></li>
+    <li><a href="#modules">Modules and imports</a></li>
+    <li><a href="#routing">Routing</a></li>
+    <li><a href="#validation">Request validation</a></li>
+    <li><a href="#responses">Responses and errors</a></li>
+    <li><a href="#streaming">Streaming</a></li>
+    <li><a href="#async">Async</a></li>
+    <li><a href="#typing">Typing</a></li>
+    <li><a href="#database">Database and shared state</a></li>
+    <li><a href="#config">Config and secrets</a></li>
+    <li><a href="#lifecycle">Lifecycle and CORS</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><a href="#gotchas">Gotchas that bit us</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <p class="eyebrow">Cadence · migration reference</p>
+  <h1>Next.js API routes → FastAPI, for someone who already knows Next.js</h1>
+  <p class="standfirst">
+    Every comparison below is real code from this migration: the TypeScript is
+    from <code>82d8b2a^</code> in <code>cadence-frontend</code>, the commit that
+    deleted the backend; the Python is the file that replaced it. Nothing is
+    invented for illustration.
+  </p>
+</header>
+
+<p class="sub" style="margin-top:1.4rem">
+  The migration removed <strong>4,104 lines of TypeScript</strong> across 15
+  server files. Almost every one has a direct Python counterpart, so the fastest
+  way to learn the Python is to read it next to the TypeScript you already
+  understand.
+</p>
+
+<div class="scroll">
+  <table>
+    <thead><tr><th style="width:19rem">Deleted TypeScript</th><th>Python that replaced it</th></tr></thead>
+    <tbody>
+      <tr><td><code>app/api/chat/route.ts</code></td><td><code>api/chat.py</code></td></tr>
+      <tr><td><code>app/api/conversations/route.ts</code></td><td><code>api/conversations.py</code></td></tr>
+      <tr><td><code>lib/server/analyst.ts</code></td><td><code>analyst/engine.py</code></td></tr>
+      <tr><td><code>lib/server/conversations.ts</code></td><td><code>conversations/store.py</code></td></tr>
+      <tr><td><code>lib/server/db.ts</code></td><td><code>db/pool.py</code></td></tr>
+      <tr><td><code>lib/server/llm.ts</code></td><td><code>llm/client.py</code></td></tr>
+      <tr><td><code>lib/server/sources/*.ts</code></td><td><code>sources/*.py</code></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 01 ------------------------------------------------------------------- -->
+<section id="shape">
+  <h2><span class="num">01</span>Shape of the thing</h2>
+  <p class="sub">Before: one process. After: two.</p>
+  <p>
+    In Next.js the API route ran <em>inside</em> the same app that served the UI.
+    Server code and client code shared a repo, a build, a deployment and a
+    language. That is genuinely convenient, and losing it is the real cost of
+    this migration — not anything about Python.
+  </p>
+  <p>
+    Now the frontend is a browser app that talks HTTP to a separate service. The
+    boundary is the API and its schemas; the frontend has no access to the
+    database, the model provider, or anything behind them.
+  </p>
+  <h3>Two things simply disappear</h3>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>export const dynamic = "force-dynamic";
+// The analyst can run for a minute or
+// more across many queries.
+export const maxDuration = 300;</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">no equivalent</span></div>
+<pre><code># Nothing to write.
+#
+# uvicorn is a long-running server, not a
+# serverless function, so there is no
+# platform timeout to raise and no
+# static-optimisation to opt out of.</code></pre>
+    </div>
+  </div>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">lib/server/db.ts</span></div>
+<pre><code>import "server-only";</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">no equivalent</span></div>
+<pre><code># Nothing to write.
+#
+# There is no bundler that could
+# accidentally ship this file to a
+# browser, so the whole category of
+# mistake stops existing.</code></pre>
+    </div>
+  </div>
+  <div class="why">
+    <span class="label">Why this matters for learning</span>
+    <p>
+      A lot of Next.js server code is defensive against the framework — marking
+      routes dynamic, fencing server-only modules, working around the bundler.
+      When you read the Python and it looks sparse, that is usually because
+      those concerns were framework-shaped and did not survive the move, not
+      because something was dropped.
+    </p>
+  </div>
+</section>
+
+<!-- 02 ------------------------------------------------------------------- -->
+<section id="toolchain">
+  <h2><span class="num">02</span>Toolchain</h2>
+  <p class="sub">Nearly everything has a one-to-one counterpart. <code>uv</code> is the one to learn first.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th style="width:13rem">Node</th><th style="width:13rem">Python (here)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>pnpm</code></td><td><code>uv</code></td>
+            <td>Installer and resolver. <code>uv sync</code> ≈ <code>pnpm install</code>; <code>uv add x</code> ≈ <code>pnpm add x</code>; <code>uv run cmd</code> ≈ <code>pnpm exec cmd</code>.</td></tr>
+        <tr><td><code>package.json</code></td><td><code>pyproject.toml</code></td>
+            <td>Dependencies, metadata and tool config in one file — ruff and pytest are configured here, not in separate dotfiles.</td></tr>
+        <tr><td><code>pnpm-lock.yaml</code></td><td><code>uv.lock</code></td><td>Same job, same commit-it rule.</td></tr>
+        <tr><td><code>node_modules/</code></td><td><code>.venv/</code></td>
+            <td>Both gitignored. The venv holds the interpreter <em>and</em> the packages, so it is closer to nvm+node_modules combined.</td></tr>
+        <tr><td><code>eslint</code> + <code>prettier</code></td><td><code>ruff</code></td>
+            <td>One tool, both jobs. <code>ruff check</code> lints, <code>ruff format</code> formats.</td></tr>
+        <tr><td><code>vitest</code></td><td><code>pytest</code></td><td>See <a href="#testing">§13</a>.</td></tr>
+        <tr><td><code>tsc --noEmit</code></td><td><em>nothing here</em></td>
+            <td>We rely on Pydantic at runtime rather than a separate static pass. <code>mypy</code> or <code>pyright</code> would be the analogue if we added one.</td></tr>
+        <tr><td>npm scripts</td><td><code>Makefile</code></td>
+            <td><code>make dev</code>, <code>make test</code>, <code>make check</code>. Python has no scripts field, so a Makefile is the convention.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="why">
+    <span class="label">The one habit to build</span>
+    <p>
+      Prefix commands with <code>uv run</code>. It resolves the venv for you, so
+      <code>uv run pytest</code> works from anywhere in the repo without
+      activating anything. Forgetting it is the most common way to run the wrong
+      Python and get a confusing <code>ModuleNotFoundError</code>.
+    </p>
+  </div>
+</section>
+
+<!-- 03 ------------------------------------------------------------------- -->
+<section id="modules">
+  <h2><span class="num">03</span>Modules and imports</h2>
+  <p class="sub">No <code>@/</code> alias, no relative-path spaghetti — absolute package paths.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>import { runAnalyst, titleFor }
+  from "@/lib/server/analyst";
+import type { AnswerBlock, TraceStep }
+  from "@/lib/types";</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">api/chat.py</span></div>
+<pre><code>from cadence_backend import analyst
+from cadence_backend.conversations import (
+    append_message, create_conversation,
+)
+from cadence_backend.schemas.answer import (
+    CalloutBlock,
+)</code></pre>
+    </div>
+  </div>
+  <ul>
+    <li><code>src/cadence_backend/</code> is the package. Every import starts from
+        its name — there is no alias to configure because the package <em>is</em>
+        the root.</li>
+    <li><code>__init__.py</code> makes a directory a package, and doubles as the
+        re-export surface — the closest thing to <code>index.ts</code>. That is
+        why <code>from cadence_backend.conversations import append_message</code>
+        works without naming <code>store.py</code>.</li>
+    <li>There is no <code>import type</code>. Python imports are always real, and
+        types are ordinary objects at runtime — which is the whole basis of
+        <a href="#typing">§9</a>.</li>
+  </ul>
+</section>
+
+<!-- 04 ------------------------------------------------------------------- -->
+<section id="routing">
+  <h2><span class="num">04</span>Routing</h2>
+  <p class="sub">File-path routing gives way to an explicit router object.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>// The path IS the file location.
+// POST /api/chat
+
+export async function POST(
+  request: Request
+) {
+  // ...
+}</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">api/chat.py</span></div>
+<pre><code>router = APIRouter(prefix="/api",
+                   tags=["chat"])
+
+@router.post("/chat")
+async def chat(request: wire.ChatRequest):
+    ...</code></pre>
+    </div>
+  </div>
+  <p>Routers are then mounted explicitly:</p>
+<pre class="solo"><code># src/cadence_backend/main.py
+app.include_router(chat.router)
+app.include_router(conversations.router)</code></pre>
+  <div class="why">
+    <span class="label">What you gain and lose</span>
+    <p>
+      You lose "the URL is the folder", which is genuinely nice for finding
+      things. You gain routes that can be grouped, prefixed and mounted
+      independently, and <code>tags</code> that organise the generated API docs.
+    </p>
+    <p>
+      That last point is not cosmetic: FastAPI serves an OpenAPI schema at
+      <code>/openapi.json</code> and browsable docs at <code>/docs</code>, both
+      derived from these decorators and the types below. Next.js had no
+      equivalent — the contract lived in whatever the two sides agreed on.
+    </p>
+  </div>
+</section>
+
+<!-- 05 ------------------------------------------------------------------- -->
+<section id="validation">
+  <h2><span class="num">05</span>Request validation</h2>
+  <p class="sub">The single biggest change in how the code reads.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>interface ChatRequest {
+  question?: string;
+  conversationId?: string | null;
+  model?: string;
+}
+
+let body: ChatRequest;
+try {
+  body = await request.json();
+} catch {
+  return Response.json(
+    { error: "Invalid JSON body." },
+    { status: 400 });
+}
+
+const question = body.question?.trim();
+if (!question) {
+  return Response.json(
+    { error: "A question is required." },
+    { status: 400 });
+}</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">schemas/chat.py</span></div>
+<pre><code>class ChatRequest(CamelModel):
+    question: str
+    conversation_id: str | None = None
+    model: str | None = None
+
+    @field_validator("question")
+    @classmethod
+    def _require_question(cls, value: str):
+        question = value.strip()
+        if not question:
+            raise ValueError(
+                "A question is required.")
+        return question</code></pre>
+    </div>
+  </div>
+  <p>
+    The route body then contains <em>none</em> of that. Declaring the parameter
+    as <code>request: wire.ChatRequest</code> is what makes it happen.
+  </p>
+  <div class="why">
+    <span class="label">The mental shift</span>
+    <p>
+      In TypeScript, <code>interface ChatRequest</code> is a compile-time claim
+      that is erased before the code runs — <code>await request.json()</code>
+      returns whatever arrived, and the interface is a promise you check by hand.
+    </p>
+    <p>
+      A Pydantic model is a runtime object. The same declaration parses the body,
+      coerces types, applies validators, returns a <strong>422 naming the bad
+      field</strong>, and generates the OpenAPI schema. The type is not a claim
+      about the data — it is the code that enforces it.
+    </p>
+  </div>
+  <div class="why warn">
+    <span class="label">Watch for — camelCase on the wire</span>
+    <p>
+      Python names are <code>snake_case</code>; the browser sends
+      <code>camelCase</code>. <code>CamelModel</code> (our base, in
+      <code>schemas/base.py</code>) sets an alias generator so
+      <code>conversation_id</code> accepts and emits <code>conversationId</code>.
+      Field names in Python, alias names on the wire — never rename a field to
+      make JSON line up.
+    </p>
+  </div>
+</section>
+
+<!-- 06 ------------------------------------------------------------------- -->
+<section id="responses">
+  <h2><span class="num">06</span>Responses and errors</h2>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/conversations/route.ts</span></div>
+<pre><code>const conversation =
+  await loadConversation(id);
+if (!conversation) {
+  return NextResponse.json(
+    { error: "Not found" },
+    { status: 404 });
+}
+return NextResponse.json(conversation);</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">api/conversations.py</span></div>
+<pre><code>conversation = await load_conversation(
+    conversation_id)
+if conversation is None:
+    raise HTTPException(
+        status_code=404,
+        detail="Not found")
+return conversation</code></pre>
+    </div>
+  </div>
+  <ul>
+    <li><strong>Return the object, not a response.</strong> FastAPI serialises the
+        returned model using <code>response_model</code>, so the happy path has no
+        wrapper call at all.</li>
+    <li><strong>Errors are raised, not returned.</strong> <code>raise
+        HTTPException(...)</code> unwinds to a handler. Coming from TypeScript the
+        instinct is to <code>return</code> an error shape; here that would be
+        serialised as a successful body.</li>
+    <li><strong>Validation errors are automatic.</strong> Nothing in the route
+        produces the 422 — it comes from the type annotation.</li>
+  </ul>
+  <div class="why">
+    <span class="label">One thing we had to override</span>
+    <p>
+      FastAPI's default validation response echoes the offending input back to
+      the caller. <code>main.py</code> replaces it with one that names the failing
+      fields and nothing else — echoing input back is a small information leak,
+      and worth knowing the default does it.
+    </p>
+  </div>
+</section>
+
+<!-- 07 ------------------------------------------------------------------- -->
+<section id="streaming">
+  <h2><span class="num">07</span>Streaming</h2>
+  <p class="sub">Where the Python is dramatically shorter, and the reason is a language feature.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>const encoder = new TextEncoder();
+const stream = new ReadableStream({
+  async start(controller) {
+    const send = (event) =>
+      controller.enqueue(encoder.encode(
+        `${JSON.stringify(event)}\n`));
+
+    try {
+      send({ type: "conversation", ... });
+      // ...
+    } finally {
+      controller.close();
+    }
+  },
+});
+
+return new Response(stream, {
+  headers: {
+    "Content-Type":
+      "application/x-ndjson; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+  },
+});</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">api/chat.py</span></div>
+<pre><code>async def analyst_stream(
+    request: wire.ChatRequest
+) -&gt; AsyncIterator[str]:
+    yield format_sse("conversation", ...)
+    # ...
+
+
+return StreamingResponse(
+    analyst_stream(request),
+    media_type="text/event-stream",
+    headers=STREAM_HEADERS,
+)</code></pre>
+    </div>
+  </div>
+  <div class="why">
+    <span class="label">Why it collapses</span>
+    <p>
+      An <code>async def</code> containing <code>yield</code> is an async
+      generator, and a generator <em>is</em> a stream. There is no controller to
+      enqueue into, no encoder, no <code>close()</code> — the function ending
+      closes the stream, and a Python <code>finally</code> still runs.
+    </p>
+    <p>
+      This is the closest thing in the migration to a language advantage rather
+      than a framework one. <code>ReadableStream</code> is a general-purpose
+      primitive you have to drive; an async generator is one the language drives
+      for you.
+    </p>
+  </div>
+  <div class="why warn">
+    <span class="label">One contract change, not a translation</span>
+    <p>
+      Next.js sent <strong>NDJSON</strong> (<code>application/x-ndjson</code>,
+      one JSON object per line). The Python sends <strong>SSE</strong>
+      (<code>text/event-stream</code>, <code>event:</code> and <code>data:</code>
+      lines). That was a deliberate change, not a port — SSE is a standard the
+      browser understands natively. The frontend's <code>readChatStream()</code>
+      sniffs the content type and handles both.
+    </p>
+    <p>
+      The two headers survived unchanged and are load-bearing in both: proxies
+      buffer streaming responses by default, which defeats the point.
+    </p>
+  </div>
+</section>
+
+<!-- 08 ------------------------------------------------------------------- -->
+<section id="async">
+  <h2><span class="num">08</span>Async</h2>
+  <p class="sub">The most familiar section. The keywords line up almost exactly.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th style="width:17rem">TypeScript</th><th>Python</th></tr></thead>
+      <tbody>
+        <tr><td><code>async function f()</code></td><td><code>async def f()</code></td></tr>
+        <tr><td><code>await p</code></td><td><code>await p</code></td></tr>
+        <tr><td><code>Promise&lt;T&gt;</code></td><td>a coroutine returning <code>T</code></td></tr>
+        <tr><td><code>for await (const x of it)</code></td><td><code>async for x in it</code></td></tr>
+        <tr><td><code>Promise.all([a, b])</code></td><td><code>asyncio.gather(a, b)</code></td></tr>
+        <tr><td>a dangling promise</td><td><code>asyncio.create_task(...)</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">app/api/chat/route.ts</span></div>
+<pre><code>for await (const event of
+           runAnalyst(question, history)) {
+  if (event.type === "step") {
+    steps.push(event.step);
+  }
+}</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">api/chat.py</span></div>
+<pre><code>async for event in analyst.run_analyst(
+        question, history, model):
+    if isinstance(event, analyst.StepEvent):
+        steps.append(event.step)</code></pre>
+    </div>
+  </div>
+  <div class="why warn">
+    <span class="label">The one real trap</span>
+    <p>
+      In Node, an un-awaited promise keeps running. In Python, a task with no
+      reference can be <strong>garbage-collected mid-flight</strong> — the work
+      silently stops. That is why <code>api/chat.py</code> holds them:
+    </p>
+<pre class="solo" style="margin-top:0.5rem"><code>_BACKGROUND_TASKS: set[asyncio.Task] = set()
+
+def _detach(coro) -&gt; None:
+    task = asyncio.create_task(coro)
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)</code></pre>
+    <p>
+      This exists for a real bug: when a client disconnects mid-answer, the
+      engine turn still has to be persisted, and without holding the task that
+      write sometimes vanished.
+    </p>
+  </div>
+</section>
+
+<!-- 09 ------------------------------------------------------------------- -->
+<section id="typing">
+  <h2><span class="num">09</span>Typing</h2>
+  <p class="sub">Closer than you would expect. One line is character-for-character identical.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">lib/server/sources/types.ts</span></div>
+<pre><code>export interface SqlSource
+    extends BaseSource {
+  kind: "sql";
+  schemaContext: string;
+  traceLabel: string;
+  query(sql: string): Promise&lt;SqlOutcome&gt;;
+}
+
+export type DataSource =
+  SqlSource | DocumentSource;</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">sources/types.py</span></div>
+<pre><code>@runtime_checkable
+class SqlSource(Protocol):
+    id: str
+    kind: Literal["sql"]
+    schema_context: str
+    trace_label: str
+
+    async def query(self, sql: str)
+        -&gt; SqlOutcome: ...
+
+
+DataSource = SqlSource | DocumentSource</code></pre>
+    </div>
+  </div>
+  <ul>
+    <li><strong><code>interface</code> → <code>Protocol</code>.</strong> Both are
+        <em>structural</em>: a class satisfies a Protocol by having the right
+        members, with no <code>implements</code> and no inheritance. If you liked
+        TypeScript interfaces, Protocols will feel like home.</li>
+    <li><strong>Discriminated unions carry over.</strong> <code>kind: "sql"</code>
+        becomes <code>kind: Literal["sql"]</code>, and narrowing works the same way.</li>
+    <li><strong><code>DataSource = SqlSource | DocumentSource</code> is identical
+        in both languages.</strong> Modern Python borrowed the <code>|</code> union
+        syntax.</li>
+    <li><strong><code>@runtime_checkable</code> has no TS analogue</strong> —
+        it lets <code>isinstance(x, SqlSource)</code> work at runtime, which a
+        TypeScript interface can never do because it no longer exists by then.</li>
+  </ul>
+  <div class="why">
+    <span class="label">The difference that matters</span>
+    <p>
+      TypeScript types are erased at build time. Python annotations are
+      <em>objects that exist at runtime</em>, which is how FastAPI reads a
+      signature to build validation and docs, and how Pydantic enforces a schema.
+      The same annotation does more work here — and unlike <code>tsc</code>,
+      nothing checks it ahead of time unless you add a type checker.
+    </p>
+  </div>
+</section>
+
+<!-- 10 ------------------------------------------------------------------- -->
+<section id="database">
+  <h2><span class="num">10</span>Database and shared state</h2>
+  <p class="sub">The <code>globalThis</code> hot-reload hack has a much plainer replacement.</p>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">lib/server/db.ts</span></div>
+<pre><code>declare global {
+  var __cadenceAppPool: Pool | undefined;
+}
+
+export function appDb(): Pool {
+  return (globalThis.__cadenceAppPool ??=
+    new Pool({
+      connectionString:
+        process.env.DATABASE_URL,
+      max: 5,
+      idleTimeoutMillis: 30_000,
+    }));
+}</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">db/pool.py</span></div>
+<pre><code>_app_pool: asyncpg.Pool | None = None
+
+async def app_pool() -&gt; asyncpg.Pool:
+    global _app_pool
+    if _app_pool is None:
+        _app_pool = await asyncpg.create_pool(
+            get_settings()
+                .require_database_url(),
+            min_size=1, max_size=5,
+            command_timeout=30,
+        )
+    return _app_pool</code></pre>
+    </div>
+  </div>
+  <p>
+    The <code>llm.ts</code> singleton used the same <code>globalThis</code>
+    trick. Its Python counterpart uses a decorator instead:
+  </p>
+<pre class="solo"><code># src/cadence_backend/llm/client.py
+@lru_cache
+def llm() -&gt; AsyncOpenAI:
+    """The shared client. Raises only when actually used without a key."""
+    ...</code></pre>
+  <div class="why">
+    <span class="label">Why <code>globalThis</code> was needed and is not now</span>
+    <p>
+      That hack exists because Next.js hot-reload re-evaluates modules, so a
+      module-level <code>new Pool()</code> would leak a pool per reload until the
+      database refused connections. Stashing it on <code>globalThis</code>
+      survives re-evaluation.
+    </p>
+    <p>
+      Python's reloader restarts the process instead, so a module-level global is
+      simply a singleton. <code>@lru_cache</code> on a zero-argument function is
+      the idiomatic shorthand for the same thing.
+    </p>
+  </div>
+  <h3>What carried over unchanged</h3>
+  <ul>
+    <li><code>$1</code> placeholders — both <code>pg</code> and <code>asyncpg</code>
+        use Postgres-native numbering, so queries moved across verbatim.</li>
+    <li>The pool size, the read-only analyst role, and the <code>FORBIDDEN</code>
+        statement regex. The privilege boundary is in Postgres, not in either
+        language.</li>
+  </ul>
+</section>
+
+<!-- 11 ------------------------------------------------------------------- -->
+<section id="config">
+  <h2><span class="num">11</span>Config and secrets</h2>
+  <div class="pair">
+    <div class="pane ts">
+      <div class="head"><span class="tag">ts</span><span class="file">lib/server/llm.ts</span></div>
+<pre><code>if (!process.env.OPENROUTER_API_KEY) {
+  throw new Error(
+    "OPENROUTER_API_KEY is not set. " +
+    "Copy .env.example to .env.");
+}
+export const MODEL =
+  process.env.OPENROUTER_MODEL ||
+  "anthropic/claude-opus-5";</code></pre>
+    </div>
+    <div class="pane py">
+      <div class="head"><span class="tag">py</span><span class="file">core/config.py</span></div>
+<pre><code>class Settings(BaseSettings):
+    app_name: str = "Cadence API"
+    openrouter_api_key: SecretStr | None = None
+    openrouter_model: str = (
+        "anthropic/claude-opus-5")
+
+    def require_openrouter_api_key(self) -&gt; str:
+        return _require(self.openrouter_api_key,
+                        "OPENROUTER_API_KEY")</code></pre>
+    </div>
+  </div>
+  <ul>
+    <li><strong>Typed and centralised.</strong> Every setting is declared once with
+        a type and a default, rather than <code>process.env.X</code> reads
+        scattered across files, each stringly-typed.</li>
+    <li><strong><code>SecretStr</code> has no Node equivalent.</strong> A plain
+        <code>str</code> API key appears in <code>repr(settings)</code>, and
+        settings objects end up in log lines and tracebacks. <code>SecretStr</code>
+        prints as <code>**********</code>.</li>
+    <li><strong>Missing keys fail at point of use, not at import.</strong> The
+        service still boots and answers <code>/health</code> without an API key —
+        absent credentials mean the analyst cannot run, not that the service is
+        unhealthy.</li>
+  </ul>
+</section>
+
+<!-- 12 ------------------------------------------------------------------- -->
+<section id="lifecycle">
+  <h2><span class="num">12</span>Lifecycle and CORS</h2>
+  <p class="sub">Two things with no Next.js counterpart, because one process needed neither.</p>
+<pre class="solo"><code># src/cadence_backend/main.py
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    warmup = asyncio.create_task(_warm_corpus())   # before serving
+    yield                                          # ← the app runs here
+    warmup.cancel()                                # after the last request
+    await close_pools()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.frontend_origins,       # never "*"
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)</code></pre>
+  <ul>
+    <li><strong>Lifespan</strong> is startup/shutdown. Everything before
+        <code>yield</code> runs once before the first request; everything after,
+        once at shutdown. Serverless routes had nowhere to put this — there was no
+        "before serving" to hook.</li>
+    <li><strong>CORS</strong> is needed <em>because</em> the split happened. When
+        the API lived inside the Next.js app it was same-origin, so the browser
+        never asked. Now it is a different origin and the allowlist is the thing
+        stopping any page from calling this API.</li>
+  </ul>
+  <div class="why">
+    <span class="label">Also worth knowing: <code>Depends</code></span>
+    <p>
+      FastAPI has a dependency-injection system — <code>Depends()</code> — that
+      most tutorials lead with, typically for database sessions and auth. This
+      codebase uses it <strong>zero times</strong>: pools are module-level
+      singletons and there is no auth. Worth recognising when you read FastAPI
+      material elsewhere, but you will not find it here.
+    </p>
+  </div>
+</section>
+
+<!-- 13 ------------------------------------------------------------------- -->
+<section id="testing">
+  <h2><span class="num">13</span>Testing</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th style="width:16rem">vitest</th><th>pytest</th></tr></thead>
+      <tbody>
+        <tr><td><code>describe</code> / <code>it</code></td><td>plain <code>def test_*()</code> functions in <code>test_*.py</code> — discovery is by name</td></tr>
+        <tr><td><code>expect(x).toBe(y)</code></td><td><code>assert x == y</code> — pytest rewrites the assert to show both sides on failure</td></tr>
+        <tr><td><code>beforeEach</code></td><td><code>@pytest.fixture</code>, requested by naming it as a test argument</td></tr>
+        <tr><td><code>vi.mock("./module")</code></td><td><code>monkeypatch</code>, or setting the environment before import</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3><code>conftest.py</code> — no direct analogue</h3>
+  <p>
+    Fixtures defined in <code>conftest.py</code> are available to every test in
+    that directory without being imported. It also runs early, which this suite
+    depends on:
+  </p>
+<pre class="solo"><code># tests/conftest.py — order is load-bearing
+import os
+
+os.environ["OPENROUTER_API_KEY"] = ""
+os.environ["DATABASE_URL"] = ""
+
+import httpx                              # noqa: E402
+from cadence_backend.main import app      # noqa: E402  ← imported AFTER</code></pre>
+  <div class="why warn">
+    <span class="label">Why the odd import order</span>
+    <p>
+      Settings are read when the app module is imported. Import the app first and
+      it captures a developer's real <code>.env</code> — the suite then called
+      OpenRouter and Postgres for real, taking 71 seconds and costing money.
+      Neutralising the environment first drops it to 0.04 seconds.
+    </p>
+    <p>
+      The <code>noqa: E402</code> comments silence "imports must be at the top",
+      because here they deliberately are not. Coming from vitest, where
+      <code>vi.mock</code> is hoisted for you, this is the sharpest difference in
+      the whole section: <strong>in Python, import order is program order.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- 14 ------------------------------------------------------------------- -->
+<section id="gotchas">
+  <h2><span class="num">14</span>Gotchas that actually bit us</h2>
+  <p class="sub">Every one of these is a real bug from this migration, with the symptom it produced.</p>
+
+  <h3>1 · pydantic-settings JSON-decodes list fields before validators run</h3>
+  <p>
+    <code>FRONTEND_ORIGINS=http://localhost:3000</code> crashed the service on
+    boot. A field typed <code>list[str]</code> is JSON-parsed <em>before</em> any
+    validator sees it, so a plain comma-separated string is invalid JSON and
+    fails first. The fix:
+  </p>
+<pre class="solo"><code>frontend_origins: Annotated[list[str], NoDecode] = Field(
+    default_factory=lambda: ["http://localhost:3000"]
+)</code></pre>
+  <p>No Node equivalent — nothing parses <code>process.env</code> for you there.</p>
+
+  <h3>2 · Mutable default arguments</h3>
+  <p>
+    The classic Python trap, with no TypeScript counterpart. A default like
+    <code>def f(items=[])</code> is created <strong>once</strong> and shared by
+    every call, so appending to it leaks between calls. Use
+    <code>None</code> and build inside, which is also why the settings field above
+    uses <code>default_factory</code> rather than a literal list.
+  </p>
+
+  <h3>3 · asyncpg + a transaction-mode pooler</h3>
+  <p>
+    Supabase's pooler hands the same client different server connections between
+    statements, so asyncpg's cached prepared statements are missing on the next
+    one. It surfaces as a bewildering "prepared statement does not exist",
+    usually on the very first request. Fixed with
+    <code>statement_cache_size=0</code> in <code>db/pool.py</code>.
+  </p>
+
+  <h3>4 · A placeholder that looks like IPv6</h3>
+  <p>
+    Leaving <code>[YOUR-PASSWORD]</code> in a connection string produced "does not
+    appear to be an IPv4 or IPv6 address" — Python reads bracketed text in a URL
+    as an IPv6 literal. The error names the wrong thing entirely.
+  </p>
+
+  <h3>5 · Secrets in a repr</h3>
+  <p>
+    A plain <code>str</code> API key on a settings object appears in full whenever
+    that object is printed or lands in a traceback. <code>SecretStr</code> exists
+    for this and costs one <code>.get_secret_value()</code> call at the point of
+    use.
+  </p>
+</section>
+
+<footer>
+  TypeScript from <code>82d8b2a^</code> in <code>cadence-frontend</code>, the
+  commit that removed the backend; Python from <code>cadence-backend</code> at
+  the time of writing. Snippets are trimmed for length — open the files
+  side by side for the full versions. See also
+  <a href="retrieval-study.html">the retrieval study</a>.
+</footer>
+
+</main>
+</div>
+</body>
+</html>

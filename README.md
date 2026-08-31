@@ -13,9 +13,16 @@ them.
 
 ## Docs
 
+Both are self-contained HTML — open them in a browser, no server needed.
+
+- [`docs/nextjs-to-fastapi.html`](docs/nextjs-to-fastapi.html) — this backend
+  used to be Next.js API routes. A concept-by-concept reference for anyone who
+  knows Next.js and is learning Python: routing, validation, streaming, typing,
+  the toolchain, and the migration's real gotchas. Every snippet is actual code
+  from before and after.
 - [`docs/retrieval-study.html`](docs/retrieval-study.html) — how the corpus is
   searched, the nine approaches compared to get there, and why four of them were
-  ruled out. A self-contained slide deck; open it in a browser, no server needed.
+  ruled out. A slide deck.
 
 ## Requirements
 
