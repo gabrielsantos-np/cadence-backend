@@ -109,3 +109,16 @@ def test_money_rejects_a_different_figure() -> None:
     assert not matches(pattern, "$1,436.99m")
     assert not matches(pattern, "$436.52m")
     assert not matches(pattern, "$2.10 billion")
+
+
+def test_money_accepts_the_bn_abbreviation() -> None:
+    """`b\\b` does not match "bn" — n is a word character.
+
+    A correct answer of "≈$4.98bn" was marked wrong by the first version.
+    """
+    pattern = money_forms(4982.69)
+
+    assert matches(pattern, "≈$4.98bn")
+    assert matches(pattern, "$4.98 billion")
+    assert matches(pattern, "$4,982.69m")
+    assert not matches(pattern, "$5.12bn")

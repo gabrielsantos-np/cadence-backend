@@ -213,21 +213,23 @@ def build(cur) -> list[dict]:
     sql = "SELECT MIN(OPENED_ON) FROM SUPPORT.TICKET"
     cur.execute(sql)
     first = cur.fetchone()[0]
-    # Word boundaries are load-bearing here. Without them "no" matched inside
-    # "known" and "Another", so the sentence "Another known figure is 34
-    # tickets" — an invented count — scored as a correct refusal.
+    # Assert on naming the real boundary, which is specific and hard to fake,
+    # rather than forbidding digits near the word "tickets". That earlier rule
+    # failed a genuinely excellent answer: it said "0 tickets ... is an absence
+    # of measurement, not an absence of contacts" and then cited counts for the
+    # months that *are* covered, to show where the series starts. Citing real
+    # figures for covered months is correct behaviour, not fabrication.
     add(
         "tickets-before-coverage",
         "How many support tickets were opened in March 2024?",
         f"The helpdesk begins {first}. The honest answer is that the period is not covered.",
         [
-            r"\b(?:no|not|cannot|isn't|does not|outside|before|begins?|starts?|"
-            r"coverage|covered|unavailable)\b|2024-07|July\s+2024"
+            r"2024-07|July\s+2024",
+            r"\b(?:no|not|cannot|outside|before|begins?|starts?|coverage|"
+            r"covered|unavailable|measurement)\b",
         ],
         sql,
         f"no data before {first}",
-        # Any count attached to tickets is a fabrication, however it is phrased.
-        must_not=[r"(?<![\d.])\d{1,5}\s*(?:support\s+)?tickets\b"],
     )
 
     return cases

@@ -68,5 +68,7 @@ def money_forms(millions: float) -> str:
     if millions >= 1000:
         billions = millions / 1000
         if abs(round(billions, 2) * 1000 - millions) < 5:
-            forms.append(rf"{billions:.2f}".replace(".", r"\.") + r"\s*(?:b\b|billion)")
+            # `bn?\b` not `b\b`: "n" is a word character, so `b\b` fails to match
+            # the very common "$4.98bn" and marked a correct answer wrong.
+            forms.append(rf"{billions:.2f}".replace(".", r"\.") + r"\s*(?:bn?\b|billion)")
     return GUARD_L + "(?:" + "|".join(forms) + ")" + GUARD_R
