@@ -137,7 +137,11 @@ def check(case: dict, run: dict) -> list[str]:
 
 
 async def main_async(args: argparse.Namespace) -> int:
-    cases = json.loads(CASES.read_text())
+    cases_file = pathlib.Path(args.cases) if args.cases else CASES
+    if not cases_file.exists():
+        print(f"no such case file: {cases_file}")
+        return 2
+    cases = json.loads(cases_file.read_text())
     if args.only:
         cases = [c for c in cases if c["id"] in args.only.split(",")]
 
@@ -259,6 +263,12 @@ def main() -> None:
     # than a throttled one.
     p.add_argument("--concurrency", type=int, default=2)
     p.add_argument("--only", default="")
+    p.add_argument(
+        "--cases",
+        default="",
+        help="a case file other than data/acceptance_cases.json — e.g. the "
+        "warehouse-derived set from scripts/gen_market_truth.py",
+    )
     p.add_argument("--dry-run", action="store_true")
     raise SystemExit(asyncio.run(main_async(p.parse_args())))
 
