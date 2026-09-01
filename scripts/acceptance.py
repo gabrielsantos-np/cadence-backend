@@ -196,13 +196,12 @@ async def main_async(args: argparse.Namespace) -> int:
                         "seconds": round(time.perf_counter() - started, 1),
                         "cost_usd": run.get("cost_usd"),
                         "tokens": run.get("tokens"),
-                        # Keep what a failure actually said. A run that records only
-                        # that an assertion failed cannot be diagnosed afterwards,
-                        # and a flake reproduces on its own schedule.
-                        "answer": None if verdict == "pass" else _answer_text(run["blocks"]),
-                        "queries": None
-                        if verdict == "pass"
-                        else [s_.get("label") for s_ in run["steps"]],
+                        # Kept for passes as well as failures. A perfect score is
+                        # the result most worth auditing, and storing nothing on
+                        # a pass meant paying to re-run a case just to see what
+                        # it had actually said.
+                        "answer": _answer_text(run["blocks"])[:8000],
+                        "queries": [s_.get("label") for s_ in run["steps"]],
                     }
                 )
                 mark = {"pass": "PASS", "fail": "FAIL", "error": "ERR "}[verdict]

@@ -34,3 +34,4 @@ data/acceptance_results.json
 # Generated from the warehouse by scripts/gen_market_truth.py — the generator
 # is the artefact, and the cases change whenever the data does.
 data/market_truth_cases.json
+data/snowflake_truth_cases.json

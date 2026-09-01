@@ -26,6 +26,7 @@ import pathlib
 import random
 
 import asyncpg
+from truth_matchers import decimal_forms, number_forms
 
 from cadence_backend.core.config import get_settings
 
@@ -39,42 +40,6 @@ RNG = random.Random(20260901)
 def d(iso: str) -> dt.date:
     """asyncpg binds DATE parameters as date objects, never strings."""
     return dt.date.fromisoformat(iso)
-
-
-#: Digits must not be preceded or followed by another digit or a decimal
-#: point. Without this, "3.3" matches inside "13.35" and a wrong answer scores
-#: as correct — the first version of this file had exactly that bug, and would
-#: have reported a falsely high accuracy.
-GUARD_L = r"(?<![\d.])"
-GUARD_R = r"(?![\d])"
-
-
-def number_forms(value: int) -> str:
-    """A regex accepting the ways a model legitimately writes one integer.
-
-    Tolerates presentation without tolerating a wrong figure: 86000, 86,000 and
-    +86,000 are the same answer; 86,001 is not. Rounded millions are accepted
-    only at the precision that actually round-trips, so an expected 3,456,019
-    accepts "3.46 million" but never a bare "3 million".
-    """
-    plain = str(abs(value))
-    forms = [f"{abs(value):,}".replace(",", r",?"), plain]
-    if abs(value) >= 1_000_000:
-        m = abs(value) / 1_000_000
-        for places in (1, 2):
-            if abs(round(m, places) * 1_000_000 - abs(value)) < 0.5 * 10 ** (6 - places):
-                forms.append(rf"{m:.{places}f}".replace(".", r"\.") + r"\s*(?:m\b|million)")
-    return GUARD_L + "(?:" + "|".join(forms) + ")" + GUARD_R
-
-
-def decimal_forms(value: float, places: int = 2) -> str:
-    """A regex for a rate or percentage, accepting one less decimal place.
-
-    4.24 may legitimately be written 4.2, but must not match inside 14.24.
-    """
-    exact = f"{value:.{places}f}".replace(".", r"\.")
-    rounded = f"{value:.{places - 1}f}".replace(".", r"\.")
-    return GUARD_L + f"(?:{exact}|{rounded})" + GUARD_R
 
 
 async def build(con: asyncpg.Connection, count: int) -> list[dict]:
