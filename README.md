@@ -13,7 +13,7 @@ them.
 
 ## Docs
 
-Both are self-contained HTML — open them in a browser, no server needed.
+All three are self-contained HTML — open them in a browser, no server needed.
 
 - [`docs/validation-questions.html`](docs/validation-questions.html) — twenty-one
   questions asked by hand, each with its answer computed from the warehouse, and what
@@ -135,10 +135,17 @@ what session mode is for.
 |---|---|---|
 | `postgres` (default) | Postgres, as the read-only `analyst_ro` role | `ANALYST_DATABASE_URL` |
 | `snowflake` | Snowflake, as the read-only `CADENCE_ANALYST` login | the `SNOWFLAKE_*` settings |
+| `both` | Both, registered side by side | both of the above |
 
-One SQL source is active at a time, deliberately. Registering both would put
-both schemas in every prompt and make the model choose, which changes how it
-answers — the switch exists to compare like with like.
+`postgres` and `snowflake` register one warehouse each, which is what the
+migration comparison needed: same question, same prompt, one variable.
+
+`both` is a different thing rather than a superset. The two warehouses hold
+different halves of the dataset — the 929k-row panel and the document corpus are
+on Supabase, the general ledger and the helpdesk are on Snowflake — so a question
+spanning them is only answerable with both registered. The cost is roughly 4,800
+tokens of schema in every prompt against 1,500, and a model that now has to
+choose; `sources/__init__.py` adds routing guidance for exactly that.
 
 ### Hosting conversations on Supabase
 
