@@ -106,3 +106,64 @@ def test_the_two_warehouses_have_distinct_ids() -> None:
     from cadence_backend.sources.snowflake import snowflake_source
 
     assert market_source.id != snowflake_source.id
+
+
+# --------------------------------------------------------------------------
+# Usage accounting. Concurrent turns share one event loop, so the accumulator
+# has to be request-scoped or one turn is billed for another's tokens.
+# --------------------------------------------------------------------------
+
+
+def test_usage_is_scoped_to_its_block_not_shared() -> None:
+    from cadence_backend.llm.client import _record, track_usage
+
+    class _Usage:
+        prompt_tokens = 10
+        completion_tokens = 5
+        model_extra = {"cost": 0.25}
+
+    class _Completion:
+        usage = _Usage()
+
+    with track_usage() as outer:
+        _record(_Completion())
+        with track_usage() as inner:
+            _record(_Completion())
+            _record(_Completion())
+        # The inner block saw only its own two calls...
+        assert inner.calls == 2
+        assert inner.cost_usd == 0.50
+    # ...and did not leak into the outer one.
+    assert outer.calls == 1
+    assert outer.cost_usd == 0.25
+    assert outer.prompt_tokens == 10
+
+
+def test_recording_outside_a_tracked_block_is_a_no_op() -> None:
+    """`title_for` can run outside a turn; that must not raise."""
+    from cadence_backend.llm.client import _record
+
+    class _Completion:
+        usage = None
+
+    _record(_Completion())  # no context set — must simply do nothing
+
+
+def test_cost_stays_none_when_the_gateway_reports_no_cost() -> None:
+    from cadence_backend.llm.client import _record, track_usage
+
+    class _Usage:
+        prompt_tokens = 7
+        completion_tokens = 3
+        model_extra: dict = {}
+
+    class _Completion:
+        usage = _Usage()
+
+    with track_usage() as usage:
+        _record(_Completion())
+
+    assert usage.calls == 1
+    assert usage.prompt_tokens == 7
+    # Tokens counted, cost unknown — reported as unknown rather than as zero.
+    assert usage.cost_usd is None

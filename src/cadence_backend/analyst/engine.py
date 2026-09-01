@@ -20,7 +20,7 @@ from cadence_backend.analyst.prompts import (
     build_system_prompt,
 )
 from cadence_backend.analyst.tools import build_tools
-from cadence_backend.llm import default_model, extract_json, llm
+from cadence_backend.llm import complete, default_model, extract_json, llm
 from cadence_backend.schemas.answer import AnswerBlock
 from cadence_backend.schemas.trace import NoteStep, SearchStep, SqlStep, TraceStep
 from cadence_backend.sources import find_document_source, find_sql_source
@@ -98,7 +98,8 @@ async def run_analyst(
     step_no = 0
 
     for _turn in range(MAX_TURNS):
-        completion = await client.chat.completions.create(
+        completion = await complete(
+            client,
             model=model,
             messages=messages,
             tools=build_tools(),
@@ -249,7 +250,8 @@ async def run_analyst(
     # on shaping the answer without also deciding what to query next.
     compose_started = time.monotonic()
     try:
-        composed = await client.chat.completions.create(
+        composed = await complete(
+            client,
             model=model,
             messages=[*messages, {"role": "user", "content": COMPOSE_PROMPT}],
             max_tokens=8192,
@@ -276,7 +278,8 @@ async def title_for(question: str) -> str:
     """Name a conversation from its opening question. Falls back to a truncation."""
     fallback = f"{question[:52].rstrip()}…" if len(question) > 52 else question
     try:
-        completion = await llm().chat.completions.create(
+        completion = await complete(
+            llm(),
             model=default_model(),
             max_tokens=32,
             messages=[

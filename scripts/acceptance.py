@@ -9,8 +9,10 @@ is non-deterministic, and the failure that matters is the one that happens a
 third of the time. `--repeat` asks each case several times and reports the pass
 *rate*, which is the number worth quoting.
 
-This costs real money and real minutes: roughly $0.35 and two minutes per case
-per repetition. `scripts/tune_retrieval.py` and `tests/test_retrieval_quality.py`
+This costs real money and real minutes. `--dry-run` estimates from previously
+measured runs rather than a constant — the cost of a case depends heavily on how
+many warehouses are registered, and a hardcoded figure went stale silently when
+that changed. `scripts/tune_retrieval.py` and `tests/test_retrieval_quality.py`
 cover the retrieval half for free; use this for the half that needs a model.
 """
 
@@ -28,7 +30,33 @@ from cadence_backend.core.config import get_settings
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CASES = ROOT / "data" / "acceptance_cases.json"
+RESULTS = ROOT / "data" / "acceptance_results.json"
 API = "http://127.0.0.1:8000"
+
+#: Used only when no measured run exists yet. Deliberately pessimistic and
+#: labelled as a guess wherever it is shown: the previous hardcoded $0.35 was
+#: measured against a single-warehouse configuration, stayed in place after the
+#: prompt tripled, and understated a `both`-mode run by roughly ten times.
+FALLBACK_COST_PER_CASE = 3.00
+
+
+def estimated_cost(n_runs: int) -> tuple[float, str]:
+    """(estimate, how we know). Prefers measurement over the constant."""
+    if RESULTS.exists():
+        try:
+            prior = json.loads(RESULTS.read_text())
+            costs = [
+                r["cost_usd"]
+                for runs in prior.values()
+                for r in runs
+                if r.get("cost_usd") is not None
+            ]
+            if costs:
+                mean = sum(costs) / len(costs)
+                return mean * n_runs, f"mean of {len(costs)} measured run(s)"
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            pass
+    return FALLBACK_COST_PER_CASE * n_runs, "GUESS — no measured run on file yet"
 
 
 def _answer_text(blocks: list) -> str:
@@ -45,6 +73,8 @@ async def ask(client: httpx.AsyncClient, question: str) -> dict:
     )
     r.raise_for_status()
     steps, blocks = [], []
+    cost_usd: float | None = None
+    tokens: int | None = None
     for chunk in r.text.split("\n\n"):
         kind = re.search(r"^event: (\S+)", chunk, re.M)
         data = re.search(r"^data: (.*)$", chunk, re.M)
@@ -54,8 +84,13 @@ async def ask(client: httpx.AsyncClient, question: str) -> dict:
         if kind.group(1) == "step":
             steps.append(payload["step"])
         elif kind.group(1) == "answer":
-            blocks = (payload.get("answer") or payload).get("blocks", [])
-    return {"steps": steps, "blocks": blocks}
+            answer = payload.get("answer") or payload
+            blocks = answer.get("blocks", [])
+            # Absent means the gateway did not report one — not that it was
+            # free. Kept as None so an unmeasured run cannot drag a mean down.
+            cost_usd = answer.get("costUsd")
+            tokens = answer.get("tokens")
+    return {"steps": steps, "blocks": blocks, "cost_usd": cost_usd, "tokens": tokens}
 
 
 #: Conditions that mean the run never happened, rather than happened and was
@@ -117,9 +152,10 @@ async def main_async(args: argparse.Namespace) -> int:
     if skipped:
         print()
     if args.dry_run:
+        estimate, basis = estimated_cost(len(cases) * args.repeat)
         print(
             f"{len(cases)} cases x {args.repeat} repetition(s) "
-            f"~ ${0.35 * len(cases) * args.repeat:.2f}, "
+            f"~ ${estimate:.2f} ({basis}), "
             f"~{2 * len(cases) * args.repeat // max(args.concurrency, 1)} min\n"
         )
         for c in cases:
@@ -145,7 +181,7 @@ async def main_async(args: argparse.Namespace) -> int:
                     verdict, failures = classify(case, run)
                 except Exception as exc:  # noqa: BLE001 — one bad run must not abort the suite
                     verdict, failures = "error", [f"{type(exc).__name__}: {exc}"]
-                    run = {"steps": [], "blocks": []}
+                    run = {"steps": [], "blocks": [], "cost_usd": None, "tokens": None}
                 results[case["id"]].append(
                     {
                         "rep": rep,
@@ -154,6 +190,8 @@ async def main_async(args: argparse.Namespace) -> int:
                         "failures": failures,
                         "steps": len(run["steps"]),
                         "seconds": round(time.perf_counter() - started, 1),
+                        "cost_usd": run.get("cost_usd"),
+                        "tokens": run.get("tokens"),
                         # Keep what a failure actually said. A run that records only
                         # that an assertion failed cannot be diagnosed afterwards,
                         # and a flake reproduces on its own schedule.
@@ -174,7 +212,7 @@ async def main_async(args: argparse.Namespace) -> int:
         print(f"running {len(cases)} cases x {args.repeat}\n")
         await asyncio.gather(*(run_one(c, r) for c in cases for r in range(args.repeat)))
 
-    print(f"\n{'case':<30}{'pass rate':>11}{'graded':>8}{'errors':>8}{'median s':>10}")
+    print(f"\n{'case':<30}{'pass rate':>11}{'graded':>8}{'errors':>8}{'median s':>10}{'$':>9}")
     failed_any = False
     for c in cases:
         rs = results[c["id"]]
@@ -189,7 +227,18 @@ async def main_async(args: argparse.Namespace) -> int:
             flag = "  <- FLAKY" if rate > 0 else "  <- FAILING"
             failed_any = True
         shown = "  n/a" if not graded else f"{rate:>10.0%}"
-        print(f"{c['id']:<30}{shown:>10}{len(graded):>8}{errors:>8}{med:>10.1f}{flag}")
+        costs = [r["cost_usd"] for r in rs if r.get("cost_usd") is not None]
+        money = f"{sum(costs):>9.2f}" if costs else f"{'—':>9}"
+        print(f"{c['id']:<30}{shown:>10}{len(graded):>8}{errors:>8}{med:>10.1f}{money}{flag}")
+
+    all_costs = [
+        r["cost_usd"] for rs in results.values() for r in rs if r.get("cost_usd") is not None
+    ]
+    unmeasured = sum(len(rs) for rs in results.values()) - len(all_costs)
+    if all_costs:
+        print(f"\n{'total':<30}{'':>10}{'':>8}{'':>8}{'':>10}{sum(all_costs):>9.2f}")
+        if unmeasured:
+            print(f"{unmeasured} run(s) reported no cost and are not in that total.")
 
     total_err = sum(1 for rs in results.values() for r in rs if r["verdict"] == "error")
     if total_err:

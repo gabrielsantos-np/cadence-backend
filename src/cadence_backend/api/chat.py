@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from cadence_backend import analyst
 from cadence_backend.conversations import append_message, create_conversation, prior_turns
 from cadence_backend.core.sse import format_sse
+from cadence_backend.llm import track_usage
 from cadence_backend.schemas import chat as wire
 from cadence_backend.schemas.answer import CalloutBlock
 
@@ -126,27 +127,47 @@ async def analyst_stream(request: wire.ChatRequest) -> AsyncIterator[str]:
             )
 
         try:
-            try:
-                async for event in analyst.run_analyst(request.question, history, request.model):
-                    if isinstance(event, analyst.StepEvent):
-                        steps.append(event.step.model_dump(by_alias=True, exclude_none=True))
-                        yield format_sse(
-                            "step", wire.StepEvent(step=event.step, elapsed_ms=elapsed())
-                        )
-                    elif isinstance(event, analyst.AnswerEvent):
-                        blocks = event.blocks
-                    elif isinstance(event, analyst.ErrorEvent):
-                        failure = event.message
-            except Exception as error:
-                logger.exception("analyst run failed")
-                failure = str(error)
+            # Scoped to this turn: concurrent requests share an event loop, and
+            # a module-level total would bill one turn for another's tokens.
+            with track_usage() as usage:
+                try:
+                    async for event in analyst.run_analyst(
+                        request.question, history, request.model
+                    ):
+                        if isinstance(event, analyst.StepEvent):
+                            steps.append(event.step.model_dump(by_alias=True, exclude_none=True))
+                            yield format_sse(
+                                "step", wire.StepEvent(step=event.step, elapsed_ms=elapsed())
+                            )
+                        elif isinstance(event, analyst.AnswerEvent):
+                            blocks = event.blocks
+                        elif isinstance(event, analyst.ErrorEvent):
+                            failure = event.message
+                except Exception as error:
+                    logger.exception("analyst run failed")
+                    failure = str(error)
 
             if failure and not blocks:
                 blocks = failure_blocks(failure)
 
             total_ms = elapsed()
             await persist(blocks, total_ms)
-            yield format_sse("answer", wire.AnswerEvent(blocks=blocks, elapsed_ms=total_ms))
+            logger.info(
+                "turn complete in %.1fs · %d model calls · %d tokens · %s",
+                total_ms / 1000,
+                usage.calls,
+                usage.prompt_tokens + usage.completion_tokens,
+                f"${usage.cost_usd:.4f}" if usage.cost_usd is not None else "cost unreported",
+            )
+            yield format_sse(
+                "answer",
+                wire.AnswerEvent(
+                    blocks=blocks,
+                    elapsed_ms=total_ms,
+                    cost_usd=usage.cost_usd,
+                    tokens=(usage.prompt_tokens + usage.completion_tokens) or None,
+                ),
+            )
             if failure:
                 yield format_sse("error", wire.ErrorEvent(message=failure))
             yield format_sse("done", wire.DoneEvent())

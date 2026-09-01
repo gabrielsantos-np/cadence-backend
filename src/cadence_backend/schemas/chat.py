@@ -70,6 +70,12 @@ class AnswerEvent(CamelModel):
 
     blocks: list[AnswerBlock]
     elapsed_ms: int | None = None
+    #: What this turn cost, as OpenRouter billed it — not a local estimate from
+    #: a price table that would drift the moment a model is repriced. Absent
+    #: when the gateway did not report one, so a figure here is always real.
+    cost_usd: float | None = None
+    #: Prompt + completion tokens across every model call in the turn.
+    tokens: int | None = None
 
 
 class ErrorEvent(CamelModel):

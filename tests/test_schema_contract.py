@@ -162,3 +162,23 @@ def test_search_result_score_is_optional_and_omitted() -> None:
         score=0.8312,
     )
     assert dump(scored)["score"] == 0.8312
+
+
+def test_cost_is_omitted_when_the_gateway_did_not_report_one() -> None:
+    """A turn is either fully costed or says nothing — never a zero it invented.
+
+    The frontend and the acceptance runner both treat an absent key as "not
+    measured". Serialising 0.0 instead would read as "this was free".
+    """
+    payload = dump(AnswerEvent(blocks=[], elapsed_ms=1200))
+
+    assert payload == {"blocks": [], "elapsedMs": 1200}
+    assert "costUsd" not in payload
+    assert "tokens" not in payload
+
+
+def test_cost_rides_along_when_it_is_known() -> None:
+    payload = dump(AnswerEvent(blocks=[], elapsed_ms=1200, cost_usd=1.2345, tokens=98_765))
+
+    assert payload["costUsd"] == 1.2345
+    assert payload["tokens"] == 98_765
