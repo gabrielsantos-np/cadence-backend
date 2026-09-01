@@ -15,6 +15,9 @@ them.
 
 Both are self-contained HTML — open them in a browser, no server needed.
 
+- [`docs/validation-questions.html`](docs/validation-questions.html) — twenty-one
+  questions asked by hand, each with its answer computed from the warehouse, and what
+  the analyst actually returned. The quickest way to satisfy yourself the thing works.
 - [`docs/nextjs-to-fastapi.html`](docs/nextjs-to-fastapi.html) — this backend
   used to be Next.js API routes. A concept-by-concept reference for anyone who
   knows Next.js and is learning Python: routing, validation, streaming, typing,

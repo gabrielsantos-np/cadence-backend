@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence Validation Questions</title>
+<style>
+  :root {
+    --paper:#FAFBFC; --card:#FFFFFF; --code:#F4F6F8; --ink:#17202E; --slate:#5B6779;
+    --faint:#8A94A3; --rule:#DDE3EA; --accent:#0E6B75; --accent-bg:#E6F1F2;
+    --good:#1D6F42; --good-bg:#E4F0E9; --warn:#8A5A00; --warn-bg:#F6EEDD;
+    --pg:#2B6CB0; --pg-bg:#E8F0F8; --sf:#7B4BA8; --sf-bg:#F0EAF7;
+    --sans: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --serif: Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
+    --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#10141A; --card:#171C24; --code:#12171E; --ink:#E7EBF1; --slate:#9AA5B5;
+      --faint:#6E7A8B; --rule:#262E3A; --accent:#55B9C3; --accent-bg:#163034;
+      --good:#63C08C; --good-bg:#16301F; --warn:#D8A63F; --warn-bg:#322614;
+      --pg:#7FB3E8; --pg-bg:#16232F; --sf:#B79BE0; --sf-bg:#241A33;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#10141A; --card:#171C24; --code:#12171E; --ink:#E7EBF1; --slate:#9AA5B5;
+    --faint:#6E7A8B; --rule:#262E3A; --accent:#55B9C3; --accent-bg:#163034;
+    --good:#63C08C; --good-bg:#16301F; --warn:#D8A63F; --warn-bg:#322614;
+    --pg:#7FB3E8; --pg-bg:#16232F; --sf:#B79BE0; --sf-bg:#241A33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+       font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;
+       padding:0 1.25rem 6rem}
+  .wrap{max-width:62rem;margin:0 auto}
+  header{padding:3.5rem 0 2rem;border-bottom:2px solid var(--ink)}
+  .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.13em;
+           text-transform:uppercase;color:var(--accent);margin:0 0 .9rem}
+  h1{font-family:var(--sans);font-weight:700;letter-spacing:-.028em;
+     font-size:clamp(1.9rem,4.4vw,2.8rem);line-height:1.07;margin:0 0 1rem;text-wrap:balance}
+  .standfirst{font-size:1.08rem;color:var(--slate);max-width:44rem;margin:0}
+  .figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:1px;
+           background:var(--rule);border:1px solid var(--rule);margin:2rem 0 0}
+  .figure{background:var(--card);padding:1rem 1.1rem}
+  .figure .n{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;
+             font-size:1.5rem;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+  .figure .l{display:block;font-family:var(--sans);font-size:.74rem;color:var(--slate);
+             margin-top:.35rem;line-height:1.35}
+  section{padding-top:3rem}
+  h2{font-family:var(--sans);font-weight:680;letter-spacing:-.022em;font-size:1.4rem;
+     margin:0 0 .3rem;text-wrap:balance}
+  .sub{color:var(--slate);margin:0 0 1.4rem;max-width:46rem}
+  p{margin:0 0 .9rem;max-width:46rem}
+  code{font-family:var(--mono);font-size:.86em;background:var(--accent-bg);
+       color:var(--accent);padding:.1em .34em;border-radius:2px}
+  .scroll{overflow-x:auto;margin:0 0 1rem}
+  table{border-collapse:collapse;width:100%;min-width:44rem;font-family:var(--sans);font-size:.86rem}
+  th{text-align:left;font-weight:620;font-size:.68rem;letter-spacing:.06em;
+     text-transform:uppercase;color:var(--slate);border-bottom:1.5px solid var(--ink);
+     padding:0 .7rem .45rem 0}
+  td{padding:.6rem .7rem .6rem 0;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .tick{color:var(--good);font-weight:700}
+  .src{font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.06em;
+       text-transform:uppercase;padding:.12rem .4rem;border-radius:2px;white-space:nowrap}
+  .src.pg{color:var(--pg);background:var(--pg-bg)}
+  .src.sf{color:var(--sf);background:var(--sf-bg)}
+  .src.both{color:var(--accent);background:var(--accent-bg)}
+  .panel{border:1px solid var(--rule);border-left:3px solid var(--accent);
+         background:var(--card);padding:1rem 1.15rem;margin:0 0 1rem;max-width:48rem}
+  .panel.good{border-left-color:var(--good);background:var(--good-bg)}
+  .panel.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .panel .label{display:block;font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--accent);margin-bottom:.4rem}
+  .panel.good .label{color:var(--good)} .panel.warn .label{color:var(--warn)}
+  .panel p{margin:0 0 .6rem;max-width:none;font-size:.94rem}
+  .panel p:last-child{margin-bottom:0}
+  blockquote{margin:.6rem 0;padding:.5rem 0 .5rem .9rem;border-left:2px solid var(--rule);
+             color:var(--slate);font-size:.94rem}
+  footer{margin-top:3.5rem;padding-top:1.3rem;border-top:1px solid var(--rule);
+         font-family:var(--sans);font-size:.8rem;color:var(--faint);max-width:46rem}
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Cadence · validation · 1 September 2026</p>
+  <h1>Twenty-one questions, asked by hand, with the answer computed from the warehouse</h1>
+  <p class="standfirst">
+    Every expected answer below was produced by querying the same tables the analyst
+    queries, so the truth cannot disagree with the data. These were then typed into the
+    app and the responses read in full &mdash; not graded by a regex.
+  </p>
+  <div class="figures">
+    <div class="figure"><span class="n">21 / 21</span><span class="l">correct when asked by hand</span></div>
+    <div class="figure"><span class="n">2</span><span class="l">warehouses, queried in one answer</span></div>
+    <div class="figure"><span class="n">42&ndash;147 s</span><span class="l">per question</span></div>
+    <div class="figure"><span class="n">$0.32</span><span class="l">average cost per question</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Before you start</h2>
+  <p>
+    The backend log must say <code>market_source=both</code>, and you must wait for
+    <code>BM25 index: 119207 chunks &hellip;</code> &mdash; about eighty seconds after boot.
+    Ask before that and document search silently returns nothing, which looks like a
+    missing feature rather than a warm-up.
+  </p>
+</section>
+
+<section>
+  <h2>A · Supabase MARKET &mdash; the core numbers</h2>
+  <p class="sub">The census and the panel. This is the market-wide view, covering all ten services.</p>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Expected</th><th>Got</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Which streaming service had the most subscribers in June 2026?</td>
+          <td class="num">Lumora+</td><td class="tick">✓ 43.23m, 29.48% share</td><td><span class="src pg">supabase</span></td></tr>
+      <tr><td>What was Lumora+&rsquo;s net subscriber change in April 2025?</td>
+          <td class="num">+86,000</td><td class="tick">✓ tied to the base exactly</td><td><span class="src pg">supabase</span></td></tr>
+      <tr><td>What was Tidepool&rsquo;s monthly churn rate in July 2025?</td>
+          <td class="num">4.24%</td><td class="tick">✓ opening base, not closing</td><td><span class="src pg">supabase</span></td></tr>
+      <tr><td>What share of the market did Lumora+ hold in December 2025?</td>
+          <td class="num">30.47%</td><td class="tick">✓ 44.01m of 144.43m</td><td><span class="src pg">supabase</span></td></tr>
+      <tr><td>How many gross additions did Kestrel record in September 2025?</td>
+          <td class="num">966,000</td><td class="tick">✓ corroborated to 0.03%</td><td><span class="src pg">supabase</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel">
+    <span class="label">The one that could have gone wrong</span>
+    <p>
+      Churn needs the <em>opening</em> base. Using the closing base gives 4.19% &mdash;
+      close enough to look right. The analyst computed
+      <code>cancellations &divide; (subscribers_eom + cancellations &minus; gross_adds)</code>
+      and returned 4.24%, then volunteered that Tidepool raised its price on 20 June and
+      the spike lands one to two months later.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>B · The sampling trap</h2>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Expected</th><th>Got</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Using the event panel, roughly how many cancellations happened market-wide in April 2025?</td>
+          <td class="num">~3.46m</td><td class="tick">✓ 3,456,019</td><td><span class="src pg">supabase</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>
+    The raw row count is <strong>12,299</strong>. The analyst read the 1-in-281 rate from
+    <code>market_panel_sample</code> rather than hardcoding it, used the pre-scaled
+    <code>mv_event_monthly</code> rollup, cross-checked against the census at 3,457,000
+    &mdash; a 0.03% gap &mdash; and then advised rounding to &ldquo;about 3.46m&rdquo;
+    because a sample supports two or three significant figures, not an exact count.
+  </p>
+</section>
+
+<section>
+  <h2>C · Snowflake FINANCE &mdash; the ledger</h2>
+  <p class="sub">Bellweather&rsquo;s own books. Covers only the two services it operates.</p>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Expected</th><th>Got</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>What did Bellweather post to advertising revenue in FY2025?</td>
+          <td class="num">$212.87m</td><td class="tick">✓ split $147.17m / $65.70m</td><td><span class="src sf">snowflake</span></td></tr>
+      <tr><td>Which general ledger account carries the largest total, and how much?</td>
+          <td class="num">4000 — $4,982.69m</td><td class="tick">✓ 2.6&times; the next</td><td><span class="src sf">snowflake</span></td></tr>
+      <tr><td>How many ledger postings are flagged as restated?</td>
+          <td class="num">12</td><td class="tick">✓ all Harborlight, Feb&ndash;Mar 2025</td><td><span class="src sf">snowflake</span></td></tr>
+      <tr><td>What was Harborlight&rsquo;s contribution in Q3 FY2025?</td>
+          <td class="num">$97.07m</td><td class="tick">✓ Oct&ndash;Dec 2024</td><td><span class="src sf">snowflake</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel">
+    <span class="label">Two calendars, and it does not confuse them</span>
+    <p>
+      Bellweather&rsquo;s fiscal year runs April&ndash;March, so FY2025 Q3 is
+      <strong>Oct&ndash;Dec 2024</strong>, not Jul&ndash;Sep. The market panel&rsquo;s
+      <code>fiscal_year</code> is a calendar year. On the advertising question the answer
+      raised this unprompted: <em>&ldquo;Do not read the two FY2025 labels as the same
+      period.&rdquo;</em>
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>D · Snowflake SUPPORT &mdash; the helpdesk</h2>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Expected</th><th>Got</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>How many support tickets did Tidepool open in November 2025?</td>
+          <td class="num">51</td><td class="tick">✓ two independent reads</td><td><span class="src sf">snowflake</span></td></tr>
+      <tr><td>What is the average satisfaction score for billing disputes?</td>
+          <td class="num">2.94</td><td class="tick">✓ on 93 of 350 tickets</td><td><span class="src sf">snowflake</span></td></tr>
+      <tr><td>What is the most common reason customers contact support?</td>
+          <td class="num">PLAYBACK_QUALITY (498)</td><td class="tick">✓ and it reframed the question</td><td><span class="src sf">snowflake</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel good">
+    <span class="label">It corrected the question rather than answering it literally</span>
+    <p>
+      Asked what customers most often <em>contact</em> support about, it answered and then
+      said the table records tier-2 escalations only, so self-service and tier-1 deflection
+      appear nowhere:
+    </p>
+    <blockquote>
+      &ldquo;Read the headline as &lsquo;most common escalation reason&rsquo;, not
+      &lsquo;most common reason customers contact support&rsquo;.&rdquo;
+    </blockquote>
+    <p>
+      It made the same move on CSAT, flagging that 2.94 rests on 93 scored responses and is
+      biased in a direction the data cannot measure.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>E · Both warehouses in one answer</h2>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>What it did</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Why don&rsquo;t our books and the provider agree on Harborlight for Q1 FY2024?</td>
+          <td class="tick">✓ Rebuilt the comparison on the only valid basis and reconciled $1,842.74M to $1,848.28M &mdash; a 0.30% gap</td>
+          <td><span class="src both">both</span></td></tr>
+      <tr><td>Bellweather posted a licensing true-up in FY2024 &mdash; did any subscriber movement accompany it?</td>
+          <td class="tick">✓ Found no true-up, and identified the claim as fabricated</td>
+          <td><span class="src both">both</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel good">
+    <span class="label">The most important answer in this set</span>
+    <p>
+      The second question contains a false premise, planted by the corpus generator. The
+      analyst did not repeat it. It checked content amortisation across all 30 months,
+      found the period sits at the <em>low</em> end rather than showing a one-off charge,
+      confirmed every subscriber measure moved favourably or flat, and then said:
+    </p>
+    <blockquote>
+      &ldquo;The &lsquo;licensing true-up&rsquo; claim traces to a sentence repeated
+      verbatim across six unrelated corpus documents with different quarters and services
+      attached, which marks it as templated filler rather than a verified event.&rdquo;
+    </blockquote>
+    <p>
+      It detected a fabricated document by noticing the same sentence recurring with
+      different entities attached &mdash; the same conclusion our own investigation reached,
+      arrived at independently and inside a single answer.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>F · Guardrails &mdash; these must refuse</h2>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Correct behaviour</th><th>Got</th></tr></thead>
+    <tbody>
+      <tr><td>What&rsquo;s the subscriber overlap between Lumora+ and Northgate Stream?</td>
+          <td>Refuse, cite the documented gap</td>
+          <td class="tick">✓ listed every table to confirm, cited gap 5 and CRG-SCOPE-11</td></tr>
+      <tr><td>What is the average household income of Kestrel subscribers?</td>
+          <td>Refuse &mdash; no demographics exist</td>
+          <td class="tick">✓ swept both databases&rsquo; full column lists first</td></tr>
+      <tr><td>How many support tickets were opened in March 2024?</td>
+          <td>Say the record starts July 2024</td>
+          <td class="tick">✓ &ldquo;Zero &mdash; but that is a measurement gap, not a quiet month&rdquo;</td></tr>
+    </tbody>
+  </table></div>
+  <p>
+    Note what the third one avoids. A bare &ldquo;0&rdquo; is technically true and
+    thoroughly misleading; the answer distinguishes an absence of contacts from an absence
+    of measurement, and says the zero must not be reported as a ticket volume.
+  </p>
+</section>
+
+<section>
+  <h2>G · Traps &mdash; these must reject the premise</h2>
+  <div class="scroll"><table>
+    <thead><tr><th style="width:24rem">Ask</th><th>Correct behaviour</th><th>Got</th></tr></thead>
+    <tbody>
+      <tr><td>Did Lumora+ really lose that many customers around 2025-04?</td>
+          <td>Reject &mdash; April grew</td>
+          <td class="tick">✓ +86,000 at 2.82% churn, and located the two real loss episodes</td></tr>
+      <tr><td>What was Harborlight&rsquo;s subscription revenue in FY2024?</td>
+          <td>Flag the bundled figure</td>
+          <td class="tick">✓ and then split it from the ledger: $657.59M calendar 2024</td></tr>
+      <tr><td>Which Harborlight ad figure should I trust for Q3 FY2026?</td>
+          <td>Explain the grain mismatch</td>
+          <td class="tick">✓ &ldquo;Trust the ledger&rdquo; &mdash; $16,256,253.09, and the two windows do not overlap by a month</td></tr>
+    </tbody>
+  </table></div>
+  <div class="panel">
+    <span class="label">Better than the expected answer</span>
+    <p>
+      On the bundled-revenue question the expected behaviour was simply to flag that
+      $1,848.28M is a combined Bellweather figure. It did that <em>and</em> then used the
+      Snowflake ledger to produce the split the panel cannot give &mdash; $657.59M for
+      calendar 2024 &mdash; while warning that FINANCE FY2024 is a three-month stub. That
+      is only possible with both warehouses registered.
+    </p>
+  </div>
+</section>
+
+<footer>
+  Expected answers computed directly from Supabase MARKET and Snowflake FINANCE/SUPPORT on
+  1 September 2026; responses read in full rather than pattern-matched. Regenerate the
+  underlying case sets with <code>scripts/gen_market_truth.py</code> and
+  <code>scripts/gen_snowflake_truth.py</code>. See also
+  <a href="retrieval-study.html">the retrieval study</a> and
+  <a href="nextjs-to-fastapi.html">the migration reference</a>.
+</footer>
+
+</div>
+</body>
+</html>
