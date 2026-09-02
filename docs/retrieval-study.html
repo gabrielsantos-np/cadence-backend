@@ -749,42 +749,98 @@
 </section>
 
 <!-- 11 ----------------------------------------------------------------- -->
-<section class="slide" data-name="Known limits">
+<section class="slide" data-name="A correction">
   <div class="inner">
-    <p class="kicker">10 · limits</p>
-    <h2>What this does not fix</h2>
+    <p class="kicker">10 · a correction</p>
+    <h2>The ground truth this study was scored against is partly false</h2>
+    <p>
+      This slide used to read <em>&ldquo;conversational questions do not retrieve
+      &mdash; 0 of 29&rdquo;</em>, presented as a hard limit of the product. It was
+      tested afterwards, and the premise did not survive.
+    </p>
     <div class="scroll">
       <table>
-        <thead><tr><th style="width:19rem">Question style</th><th class="num">Found</th><th>Why</th></tr></thead>
+        <thead><tr><th style="width:14rem">Planted claim</th><th class="num">Supported by the data</th><th>Checked how</th></tr></thead>
         <tbody>
-          <tr><td>Carries an exact period label<br><span style="color:var(--slate)">&ldquo;…for Q1 FY2024?&rdquo;</span></td>
-              <td class="num">44 / 44</td>
-              <td>Two near-unique tokens pin the passage.</td></tr>
-          <tr><td>Conversational<br><span style="color:var(--slate)">&ldquo;did we lose that many customers around 2025-04?&rdquo;</span></td>
-              <td class="num">0 / 29</td>
-              <td>Shares no selective term with the passage, which says &ldquo;cancellation spike&rdquo; and &ldquo;migration&rdquo;.</td></tr>
+          <tr><td>MARKET &mdash; &ldquo;an annual-plan migration spike&rdquo;</td>
+              <td class="num">0 of 8</td>
+              <td>April 2025 sits at 6.1% annual-prior cancels against a 6.1% mean</td></tr>
+          <tr><td>SUPPORT &mdash; &ldquo;an escalation surge&rdquo;</td>
+              <td class="num">0 of 6</td>
+              <td><code>SUPPORT.TICKET</code> has no escalation column, and two cite months before the data begins</td></tr>
+          <tr class="winner"><td>FINANCE &mdash; &ldquo;a true-up on account 5000&rdquo;</td>
+              <td class="num">grounded</td>
+              <td>Account 5000 exists and is content amortisation &mdash; though a cost line, not a revenue one</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="panel warn">
-      <span class="label">Open, and undiagnosed</span>
+    <div class="panel bad">
+      <span class="label">What this means for the numbers on the previous slides</span>
       <p>
-        28 questions are unfindable <em>even when handed the exact answer text</em> as
-        the query. Until that is understood, treat <strong>0.714 as a soft
-        ceiling</strong> rather than a known one.
+        The <strong>relative</strong> comparison holds: every approach was scored against
+        the same set, so the ranking between them is sound and the recommendation stands.
+        The <strong>absolute</strong> figures &mdash; 0.459 shipped, 0.714 at the oracle
+        &mdash; describe agreement with a partly-fabricated corpus, and should not be
+        quoted as product accuracy.
+      </p>
+      <p>
+        The 0-of-29 was never a retrieval failure. <strong>Retrieving those documents
+        would have made answers worse.</strong>
       </p>
     </div>
-    <p style="font-size:0.9rem;color:var(--slate)">
-      Practical consequence: the product can make promises about questions that name
-      a period. It cannot yet make them about loosely-worded ones.
+  </div>
+</section>
+
+<!-- 12 ----------------------------------------------------------------- -->
+<section class="slide" data-name="What is verified">
+  <div class="inner">
+    <p class="kicker">11 · what is actually verified</p>
+    <h2>Ground truth rebuilt, and the answer measured against it</h2>
+    <p class="lede">
+      Questions whose answers are computed by querying the same tables the analyst
+      queries. Truth and data cannot disagree by construction &mdash; which is exactly
+      what the planted set got wrong.
     </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:20rem">Source</th><th class="num">Questions</th><th class="num">Correct</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Supabase MARKET &mdash; census and 929k-row panel</td><td class="num">18</td><td class="num">18</td><td class="num">$5.51</td></tr>
+          <tr><td>Snowflake FINANCE + SUPPORT &mdash; ledger and helpdesk</td><td class="num">14</td><td class="num">14</td><td class="num">$4.67</td></tr>
+          <tr class="winner"><td>Both warehouses, automated</td><td class="num">32</td><td class="num">32 &mdash; 100%</td><td class="num">$10.18</td></tr>
+          <tr class="winner"><td>Re-asked by hand, every answer read in full</td><td class="num">21</td><td class="num">21 &mdash; 100%</td><td class="num">&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel good">
+      <span class="label">The answer that matters most</span>
+      <p>
+        Asked about a licensing true-up the corpus asserts, the analyst queried the
+        ledger, found the account was a cost line with flat postings, and called the claim
+        <em>&ldquo;a sentence repeated verbatim across six unrelated corpus documents
+        &hellip; templated filler rather than a verified event&rdquo;</em>. It detected the
+        fabrication unprompted, inside one answer.
+      </p>
+    </div>
+    <details>
+      <summary>Where the retrieval gap actually sits, now that the eggs are discounted</summary>
+      <div class="dd">
+        <p>
+          Retrieval is a corroboration layer, not the answer path. Figures come from SQL
+          that was executed; the corpus supports a claim and never produces one. That is
+          what let the analyst contradict a document rather than repeat it, and it is why
+          a 0-of-29 on documents did not stop those questions being answered correctly
+          from the warehouse.
+        </p>
+      </div>
+    </details>
   </div>
 </section>
 
 <!-- 12 ----------------------------------------------------------------- -->
 <section class="slide" data-name="Reproduce">
   <div class="inner">
-    <p class="kicker">11 · reproduce</p>
+    <p class="kicker">12 · reproduce</p>
     <h2>Every figure in this deck, from three commands</h2>
 <pre><code># regression tests — offline, no model, no network, 1.3s
 uv run pytest tests/test_retrieval_quality.py
@@ -801,10 +857,12 @@ uv run python scripts/acceptance.py --dry-run</code></pre>
       corpus and every number here rebuild identically.
     </p>
     <p style="font-size:0.85rem;color:var(--slate)">
-      Figures measured 27 August 2026 against 20,000 documents / 119,207 chunks /
-      98 planted questions. The retrieval floors are pinned in
-      <code>tests/test_retrieval_quality.py</code>, so if a change moves them, the
-      test suite says so.
+      Retrieval figures measured 27 August 2026 against 20,000 documents / 119,207
+      chunks / 98 planted questions &mdash; see the correction on slide 11 before
+      quoting them. The warehouse-derived validation was measured 1 September 2026 and
+      regenerates with <code>scripts/gen_market_truth.py</code> and
+      <code>scripts/gen_snowflake_truth.py</code>. Retrieval floors are pinned in
+      <code>tests/test_retrieval_quality.py</code>.
     </p>
   </div>
 </section>

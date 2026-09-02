@@ -23,9 +23,10 @@ All three are self-contained HTML — open them in a browser, no server needed.
   knows Next.js and is learning Python: routing, validation, streaming, typing,
   the toolchain, and the migration's real gotchas. Every snippet is actual code
   from before and after.
-- [`docs/retrieval-study.html`](docs/retrieval-study.html) — how the corpus is
-  searched, the nine approaches compared to get there, and why four of them were
-  ruled out. A slide deck.
+- [`docs/retrieval-study.html`](docs/retrieval-study.html) — the presentation
+  deck: how the corpus is searched, the nine approaches compared to get there,
+  why four were ruled out, the correction to the ground truth those numbers were
+  scored against, and what is verified across both warehouses.
 
 ## Requirements
 
