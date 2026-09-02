@@ -26,9 +26,9 @@ from dataclasses import asdict, dataclass, field
 import asyncpg
 
 from cadence_backend.core.config import get_settings
-from cadence_backend.retrieval import embeddings as emb
 from cadence_backend.retrieval.chunking import STRATEGIES, Chunk
-from cadence_backend.retrieval.metrics import (
+from cadence_backend.retrieval.experiments import embeddings as emb
+from cadence_backend.retrieval.experiments.metrics import (
     Relevant,
     graded,
     mrr,
@@ -37,7 +37,7 @@ from cadence_backend.retrieval.metrics import (
     precision_at_k,
     recall_at_k,
 )
-from cadence_backend.retrieval.retrievers import (
+from cadence_backend.retrieval.experiments.retrievers import (
     BM25,
     Corpus,
     Dense,
@@ -49,7 +49,7 @@ from cadence_backend.retrieval.retrievers import (
     TermOverlap,
     timed,
 )
-from cadence_backend.retrieval.two_stage import PostgresTwoStage
+from cadence_backend.retrieval.experiments.two_stage import PostgresTwoStage
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "data" / "bench_results.json"
