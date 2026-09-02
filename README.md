@@ -13,8 +13,12 @@ them.
 
 ## Docs
 
-All three are self-contained HTML — open them in a browser, no server needed.
+`docs/` is the source of truth. All four are self-contained HTML — open them in a
+browser, no server needed, no build step.
 
+- [`docs/demo-readiness.html`](docs/demo-readiness.html) — what is ready to show,
+  the twenty questions to ask, how an answer is produced, and what to avoid on
+  stage. Also published as a shareable artifact, republished from this file.
 - [`docs/validation-questions.html`](docs/validation-questions.html) — twenty-one
   questions asked by hand, each with its answer computed from the warehouse, and what
   the analyst actually returned. The quickest way to satisfy yourself the thing works.
