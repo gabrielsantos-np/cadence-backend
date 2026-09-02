@@ -180,6 +180,7 @@ async def run_analyst(
                         NoteStep(
                             id=f"s{step_no}",
                             label=f"{purpose} — query failed, retrying",
+                            outcome="retry",
                             duration_ms=int((time.monotonic() - started) * 1000),
                             detail=detail[:400],
                         )
@@ -202,6 +203,7 @@ async def run_analyst(
                         SearchStep(
                             id=f"s{step_no}",
                             label=f'Checking {source.name.lower()}: "{query}"',
+                            source=source.name,
                             duration_ms=int((time.monotonic() - started) * 1000),
                             query=query,
                             results=results,
@@ -225,6 +227,7 @@ async def run_analyst(
                         NoteStep(
                             id=f"s{step_no}",
                             label=f'Searching for "{query}" failed, retrying',
+                            outcome="retry",
                             duration_ms=int((time.monotonic() - started) * 1000),
                             detail=detail[:400],
                         )
@@ -265,6 +268,7 @@ async def run_analyst(
             NoteStep(
                 id=f"s{step_no}",
                 label="Composed the answer",
+                outcome="composed",
                 duration_ms=int((time.monotonic() - compose_started) * 1000),
                 detail=(f"Turned {sql_step_count} query results into {len(blocks)} answer blocks."),
             )

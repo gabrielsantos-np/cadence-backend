@@ -10,7 +10,7 @@ import json
 from cadence_backend.core.sse import format_sse
 from cadence_backend.schemas.answer import Finding, FindingBlock, LineChartBlock, LineChartSpec
 from cadence_backend.schemas.chat import AnswerEvent, ConversationEvent, DoneEvent, StepEvent
-from cadence_backend.schemas.trace import SqlStep
+from cadence_backend.schemas.trace import NoteStep, SearchStep, SqlStep
 
 
 def dump(model) -> dict:
@@ -182,3 +182,50 @@ def test_cost_rides_along_when_it_is_known() -> None:
 
     assert payload["costUsd"] == 1.2345
     assert payload["tokens"] == 98_765
+
+
+def test_search_step_names_its_document_source() -> None:
+    """The corpus and the curated notes must be distinguishable on the wire.
+
+    One is 119,207 ranked chunks, the other is six hand-written methodology
+    notes. A trace that renders them identically hides which one a claim came
+    from — and they carry very different weight.
+    """
+    step = SearchStep(
+        id="s1",
+        label='Checking market research corpus: "billing divergence"',
+        duration_ms=1140,
+        source="Market research corpus",
+        query="billing divergence",
+        results=[],
+    )
+
+    assert dump(step)["source"] == "Market research corpus"
+
+
+def test_search_step_source_is_omitted_when_absent_not_null() -> None:
+    step = SearchStep(id="s1", label="…", duration_ms=1, query="q", results=[])
+
+    assert "source" not in dump(step)
+
+
+def test_note_step_distinguishes_the_answer_from_a_retry() -> None:
+    """Both are "not a query and not a search" and mean opposite things.
+
+    Composing is the result; retrying is a stumble. Rendering them with one
+    icon told the reader neither.
+    """
+    composed = NoteStep(
+        id="s9", label="Composed the answer", duration_ms=49_351, outcome="composed", detail=""
+    )
+    retry = NoteStep(
+        id="s4",
+        label="… — query failed, retrying",
+        duration_ms=12,
+        outcome="retry",
+        detail="syntax error",
+    )
+
+    assert dump(composed)["outcome"] == "composed"
+    assert dump(retry)["outcome"] == "retry"
+    assert "outcome" not in dump(NoteStep(id="s1", label="…", duration_ms=1, detail=""))

@@ -49,17 +49,28 @@ class SearchStep(CamelModel):
     kind: Literal["search"] = "search"
     label: str
     duration_ms: int
+    #: Which document source answered, e.g. "Market research corpus". The
+    #: corpus and the six curated notes are different things — one is 119,207
+    #: ranked chunks, the other is hand-written methodology guidance — and a
+    #: trace that renders them identically hides which one a claim came from.
+    #: Optional so the field is omitted rather than sent as null.
+    source: str | None = None
     query: str
     results: list[SearchResult]
 
 
 class NoteStep(CamelModel):
-    """Non-retrieval work: charting, reconciling, checking documented gaps."""
+    """Non-retrieval work: composing the answer, or recovering from a failure."""
 
     id: str
     kind: Literal["note"] = "note"
     label: str
     duration_ms: int
+    #: What this step was. Composing the answer and retrying a failed query are
+    #: both "not a query and not a search", but they mean opposite things to a
+    #: reader — one is the result, the other is a stumble. Optional so the
+    #: field is omitted rather than sent as null.
+    outcome: Literal["composed", "retry"] | None = None
     detail: str
 
 

@@ -2,13 +2,13 @@
   {
     "id": "egg-finance-trueup",
     "question": "Why don't our books and the provider agree on Harborlight for Q1 FY2024?",
-    "why": "The flagship planted fact. The reason lives only in a document; the analyst must surface it rather than explaining the variance away as structural.",
+    "why": "The corpus asserts a one-off true-up on account 5000. It is not true \u2014 5000 is content amortisation, a cost line, and its postings are flat. The analyst must test the claim against the ledger rather than repeat it.",
     "must_include": [
-      "true-?up",
-      "account 5000"
+      "content amortisation|cost line|amortisation",
+      "flat|no (?:one-off|true-?up|spike)|no spike|does not hold|do not hold|set aside|reject"
     ],
     "must_not_include": [
-      "irreducible and cannot be explained"
+      "(?:traces to|caused by|explained by|due to|because of)[^.]{0,60}true-?up"
     ],
     "must_search": true
   },
@@ -91,14 +91,18 @@
   {
     "id": "cross-ledger-and-corpus",
     "question": "Why don't our books and the provider agree on Harborlight for Q1 FY2024?",
-    "why": "Needs both warehouses: the reason is in a Supabase document, the amount in the Snowflake ledger. In single-source mode only half is reachable.",
+    "why": "Needs both warehouses: the claim is in a Supabase document, the ledger that refutes it is on Snowflake. Passing means the analyst checked rather than quoted.",
     "must_include": [
-      "true-?up",
-      "account 5000"
+      "content amortisation|cost line|amortisation",
+      "flat|no (?:one-off|true-?up|spike)|no spike|does not hold|do not hold|set aside|reject",
+      "0\\.30%|0\\.3%|1,?842\\.74|1,?848\\.28"
     ],
     "must_sql_match": "GL_ENTRY|gl_entry|FINANCE\\.",
     "must_search": true,
-    "requires": "both"
+    "requires": "both",
+    "must_not_include": [
+      "(?:traces to|caused by|explained by|due to)[^.]{0,60}true-?up"
+    ]
   },
   {
     "id": "cross-support-tickets",
@@ -113,11 +117,14 @@
   {
     "id": "cross-panel-and-ledger",
     "question": "Bellweather posted a licensing true-up in FY2024 \u2014 did any subscriber movement accompany it?",
-    "why": "Deliberately spans both: the posting is Snowflake FINANCE, the subscriber events are the 929k-row Supabase panel. Neither warehouse alone can answer it.",
+    "why": "The question embeds a false premise. Spanning both warehouses, the analyst should find no such posting and say so, not invent subscriber movement to match it.",
     "must_include": [
-      "5000|true-?up|licens"
+      "no |not |could not|cannot|flat|low end|no one-off|templated|filler"
     ],
     "must_sql_match": "subscription_event|mv_event_monthly",
-    "requires": "both"
+    "requires": "both",
+    "must_not_include": [
+      "the true-?up (?:caused|drove|explains|led to)"
+    ]
   }
 ]
