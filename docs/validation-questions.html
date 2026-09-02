@@ -113,6 +113,70 @@
 </section>
 
 <section>
+  <h2>How an answer is actually produced</h2>
+  <p class="sub">
+    Worth knowing before reading the results, because it is what makes them
+    checkable: the analyst writes its own SQL and runs it. Nothing is templated,
+    and every figure traces to a query you can expand in the app.
+  </p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th style="width:3rem">#</th><th style="width:15rem">Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td>Prompt</td>
+            <td>The model is given two tools &mdash; <code>run_sql</code> and
+                <code>search_documents</code> &mdash; and the full schema of every
+                registered source, including the documented traps and coverage gaps.</td></tr>
+        <tr><td class="num">2</td><td>It writes a query</td>
+            <td>The SQL is the model&rsquo;s own. It picks the source
+                (<code>market</code> for Supabase, <code>bellweather</code> for Snowflake)
+                and states a purpose, which becomes the label on the trace row.</td></tr>
+        <tr><td class="num">3</td><td>Guard</td>
+            <td>The statement must begin <code>SELECT</code> or <code>WITH</code>, and a
+                forbidden-keyword check blocks writes and <code>USE ROLE</code>. This is
+                defence in depth &mdash; the real boundary is a database role granted
+                SELECT and nothing else.</td></tr>
+        <tr><td class="num">4</td><td>Execute</td>
+            <td>Supabase via <code>asyncpg</code> in an explicit read-only transaction;
+                Snowflake via its connector on a worker thread, so one slow query cannot
+                stall the stream. Up to 50 rows come back.</td></tr>
+        <tr><td class="num">5</td><td>Stream</td>
+            <td>The SQL, its columns and its rows are pushed to the browser as a trace
+                step immediately &mdash; before the answer exists.</td></tr>
+        <tr><td class="num">6</td><td>Loop</td>
+            <td>Results re-enter the conversation and the model decides what to ask next,
+                up to fourteen turns. This is why traces run three to fourteen steps: each
+                query is chosen from the last one&rsquo;s result.</td></tr>
+        <tr><td class="num">7</td><td>Compose</td>
+            <td>A separate pass turns the accumulated evidence into answer blocks, so
+                shaping the answer never competes with deciding what to query.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel good">
+    <span class="label">Why this is the anti-hallucination story</span>
+    <p>
+      Numbers come from SQL that was <em>executed</em>, not from documents that were read.
+      That is what lets the analyst contradict a document: asked about a licensing true-up
+      the corpus asserts, it queried the ledger, found the account was a cost line with no
+      spike, and rejected the claim. A retrieval-led design would have repeated it.
+    </p>
+  </div>
+
+  <div class="panel warn">
+    <span class="label">One thing that is a tendency, not a mechanism</span>
+    <p>
+      The cross-checks in these answers &mdash; scaling the panel and comparing it to the
+      census, or counting the helpdesk two ways &mdash; are the <em>model choosing</em> to
+      corroborate, encouraged by the prompt. No code enforces them. It happened in every
+      answer where it was relevant, but nothing guarantees it on the next question.
+    </p>
+  </div>
+</section>
+
+<section>
   <h2>A · Supabase MARKET &mdash; the core numbers</h2>
   <p class="sub">The census and the panel. This is the market-wide view, covering all ten services.</p>
   <div class="scroll"><table>
