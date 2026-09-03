@@ -27,6 +27,9 @@ browser, no server needed, no build step.
   knows Next.js and is learning Python: routing, validation, streaming, typing,
   the toolchain, and the migration's real gotchas. Every snippet is actual code
   from before and after.
+- [`docs/langchain-comparison.html`](docs/langchain-comparison.html) — should the
+  analyst loop be LangChain? Side-by-side code, what moves and what stays, the risks,
+  and a four-phase plan with a gate at each step. Written against the current API.
 - [`docs/retrieval-study.html`](docs/retrieval-study.html) — the presentation
   deck: how the corpus is searched, the nine approaches compared to get there,
   why four were ruled out, the correction to the ground truth those numbers were

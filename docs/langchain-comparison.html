@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence on LangChain?</title>
+<style>
+  :root {
+    --paper:#FAFBFC; --card:#FFFFFF; --code:#F4F6F8; --ink:#17202E; --slate:#5B6779;
+    --faint:#8A94A3; --rule:#DDE3EA; --accent:#0E6B75; --accent-bg:#E6F1F2;
+    --good:#1D6F42; --good-bg:#E4F0E9; --warn:#8A5A00; --warn-bg:#F6EEDD;
+    --bad:#A32E28; --bad-bg:#F6E5E4;
+    --ours:#0E6B75; --ours-bg:#E6F1F2; --lc:#7B4BA8; --lc-bg:#F0EAF7;
+    --sans: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --serif: Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
+    --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#10141A; --card:#171C24; --code:#12171E; --ink:#E7EBF1; --slate:#9AA5B5;
+      --faint:#6E7A8B; --rule:#262E3A; --accent:#55B9C3; --accent-bg:#163034;
+      --good:#63C08C; --good-bg:#16301F; --warn:#D8A63F; --warn-bg:#322614;
+      --bad:#E38078; --bad-bg:#331B1A;
+      --ours:#55B9C3; --ours-bg:#163034; --lc:#B79BE0; --lc-bg:#241A33;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#10141A; --card:#171C24; --code:#12171E; --ink:#E7EBF1; --slate:#9AA5B5;
+    --faint:#6E7A8B; --rule:#262E3A; --accent:#55B9C3; --accent-bg:#163034;
+    --good:#63C08C; --good-bg:#16301F; --warn:#D8A63F; --warn-bg:#322614;
+    --bad:#E38078; --bad-bg:#331B1A;
+    --ours:#55B9C3; --ours-bg:#163034; --lc:#B79BE0; --lc-bg:#241A33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+       font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased;padding:0 1.25rem 6rem}
+  .wrap{max-width:64rem;margin:0 auto}
+  header{padding:3.5rem 0 2rem;border-bottom:2px solid var(--ink)}
+  .eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.13em;
+           text-transform:uppercase;color:var(--accent);margin:0 0 .9rem}
+  h1{font-family:var(--sans);font-weight:700;letter-spacing:-.028em;
+     font-size:clamp(1.9rem,4.4vw,2.7rem);line-height:1.07;margin:0 0 1rem;text-wrap:balance}
+  .standfirst{font-size:1.08rem;color:var(--slate);max-width:44rem;margin:0}
+  section{padding-top:3rem}
+  h2{font-family:var(--sans);font-weight:680;letter-spacing:-.022em;font-size:1.4rem;
+     margin:0 0 .3rem;text-wrap:balance}
+  h3{font-family:var(--sans);font-weight:650;font-size:1rem;margin:1.6rem 0 .5rem}
+  .sub{color:var(--slate);margin:0 0 1.4rem;max-width:46rem}
+  p{margin:0 0 .9rem;max-width:46rem}
+  ul{max-width:46rem;padding-left:1.2rem} li{margin-bottom:.4rem}
+  code{font-family:var(--mono);font-size:.86em;background:var(--accent-bg);
+       color:var(--accent);padding:.1em .34em;border-radius:2px}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin:0 0 1.1rem}
+  @media (max-width:56rem){.pair{grid-template-columns:1fr}}
+  .pane{border:1px solid var(--rule);background:var(--card);min-width:0}
+  .pane .head{display:flex;align-items:baseline;gap:.55rem;flex-wrap:wrap;
+              padding:.5rem .8rem;border-bottom:1px solid var(--rule);
+              font-family:var(--mono);font-size:.68rem}
+  .tag{font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+       padding:.1rem .35rem;border-radius:2px}
+  .pane.ours .tag{color:var(--ours);background:var(--ours-bg)}
+  .pane.lc .tag{color:var(--lc);background:var(--lc-bg)}
+  .pane .file{color:var(--faint);word-break:break-all}
+  .pane pre{margin:0;padding:.8rem;overflow-x:auto;font-family:var(--mono);
+            font-size:.75rem;line-height:1.6;background:var(--code)}
+  .pane pre code{background:none;color:var(--ink);padding:0;font-size:inherit}
+  pre.solo{border:1px solid var(--rule);background:var(--code);padding:.85rem 1rem;
+           overflow-x:auto;margin:0 0 1.1rem;font-family:var(--mono);font-size:.78rem;line-height:1.6}
+  pre.solo code{background:none;color:var(--ink);padding:0;font-size:inherit}
+  .scroll{overflow-x:auto;margin:0 0 1rem}
+  table{border-collapse:collapse;width:100%;min-width:40rem;font-family:var(--sans);font-size:.85rem}
+  th{text-align:left;font-weight:620;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;
+     color:var(--slate);border-bottom:1.5px solid var(--ink);padding:0 .7rem .45rem 0;vertical-align:bottom}
+  td{padding:.6rem .7rem .6rem 0;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .panel{border:1px solid var(--rule);border-left:3px solid var(--accent);background:var(--card);
+         padding:1rem 1.15rem;margin:0 0 1rem;max-width:48rem}
+  .panel.good{border-left-color:var(--good);background:var(--good-bg)}
+  .panel.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .panel.bad{border-left-color:var(--bad);background:var(--bad-bg)}
+  .panel .label{display:block;font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--accent);margin-bottom:.4rem}
+  .panel.good .label{color:var(--good)} .panel.warn .label{color:var(--warn)}
+  .panel.bad .label{color:var(--bad)}
+  .panel p{margin:0 0 .6rem;max-width:none;font-size:.94rem} .panel p:last-child{margin-bottom:0}
+  .verdict{font-family:var(--mono);font-size:.68rem;font-weight:700;text-transform:uppercase;
+           letter-spacing:.05em;white-space:nowrap}
+  .v-lc{color:var(--lc)} .v-keep{color:var(--good)} .v-you{color:var(--warn)}
+  footer{margin-top:3.5rem;padding-top:1.3rem;border-top:1px solid var(--rule);
+         font-family:var(--sans);font-size:.8rem;color:var(--faint);max-width:46rem}
+  a{color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Cadence · evaluation · 3 September 2026</p>
+  <h1>Should the analyst loop be LangChain?</h1>
+  <p class="standfirst">
+    A comparison and a migration plan, written against the current LangChain API rather
+    than a remembered one &mdash; which matters, because the six-line version usually
+    quoted for this is now deprecated.
+  </p>
+</header>
+
+<section>
+  <h2>First, a correction to the obvious answer</h2>
+  <p>
+    The snippet everyone reaches for is <code>create_sql_agent</code>. LangChain&rsquo;s own
+    reference now says it returns a legacy <code>AgentExecutor</code> that is
+    <strong>&ldquo;not actively supported as the recommended foundation for new production
+    applications&rdquo;</strong>. The current path is <code>create_agent</code> with the SQL
+    toolkit&rsquo;s tools passed in.
+  </p>
+  <div class="panel warn">
+    <span class="label">What that costs the pitch</span>
+    <p>
+      &ldquo;Six lines replaces four hundred&rdquo; was true of the deprecated API. On the
+      supported one you write the model init, the toolkit, the system prompt, the agent, and
+      then your own streaming and answer-composition layers &mdash; because those are not
+      what the library provides. Still much less code than we have. Not six lines.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Side by side</h2>
+  <h3>Building the agent</h3>
+  <div class="pair">
+    <div class="pane ours">
+      <div class="head"><span class="tag">ours</span><span class="file">analyst/engine.py · 298 lines</span></div>
+<pre><code>client = llm()
+messages = [{"role": "system", ...},
+            {"role": "user", "content": question}]
+
+for _turn in range(MAX_TURNS):
+    completion = await complete(
+        client, model=model, messages=messages,
+        tools=build_tools(), max_tokens=4096)
+    for call in completion.choices[0].message.tool_calls or []:
+        if call.function.name == "run_sql":
+            source = find_sql_source(args["source"])
+            outcome = await source.query(args["sql"])
+            yield StepEvent(SqlStep(...))     # streams now
+            messages.append({"role": "tool", ...})
+# then a separate composition pass -&gt; typed blocks</code></pre>
+    </div>
+    <div class="pane lc">
+      <div class="head"><span class="tag">langchain</span><span class="file">the supported API</span></div>
+<pre><code>from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
+
+db = SQLDatabase.from_uri(
+    settings.analyst_database_url,
+    custom_table_info=MARKET_TABLE_PROSE,   # our traps
+    view_support=True,
+    sample_rows_in_table_info=3)
+
+model = init_chat_model("anthropic/claude-opus-5")
+agent = create_agent(
+    model,
+    SQLDatabaseToolkit(db=db, llm=model).get_tools(),
+    system_prompt=SYSTEM_PROMPT)
+
+async for ev in agent.astream_events({"messages": [...]}):
+    ...   # map their events onto our SSE contract</code></pre>
+    </div>
+  </div>
+
+  <h3>How the model learns the schema</h3>
+  <div class="pair">
+    <div class="pane ours">
+      <div class="head"><span class="tag">ours</span><span class="file">in the system prompt, always</span></div>
+<pre><code>## Facts — THREE SEPARATE GRAINS.
+##   Never join them as if they were one.
+
+monthly_subscribers(...)  SERVICE grain.
+  Monthly churn = cancellations /
+    (subscribers_eom + cancellations - gross_adds).
+
+genre_engagement(...)
+  engaged_subscribers DOUBLE-COUNTS across genres
+  and must never be summed into a subscriber total.
+
+annual_revenue(...)
+  FY2026 covers Jan-Jun 2026 only — a HALF year.</code></pre>
+    </div>
+    <div class="pane lc">
+      <div class="head"><span class="tag">langchain</span><span class="file">fetched by tool, on demand</span></div>
+<pre><code>sql_db_list_tables()      -&gt; table names
+sql_db_schema(["monthly_subscribers"])
+    -&gt; CREATE TABLE monthly_subscribers (
+         service_id INTEGER,
+         month DATE,
+         subscribers_eom INTEGER,
+         gross_adds INTEGER,
+         cancellations INTEGER)
+       /* 3 rows from monthly_subscribers:
+          1  2024-01-01  41286000  ... */
+
+# The churn formula, the double-count and the
+# half-year are NOT here. They are not in the DDL.</code></pre>
+    </div>
+  </div>
+  <div class="panel bad">
+    <span class="label">This is the whole decision, in one row of a table</span>
+    <p>
+      Introspection gives column names, types and three sample rows. Ask an agent working
+      from that for July 2025 churn and it will very reasonably divide by the closing base
+      and answer <strong>4.19%</strong> &mdash; plausible, confident, wrong. Ours answered
+      <strong>4.24%</strong> because the formula is written down.
+    </p>
+    <p>
+      <code>custom_table_info</code> is the escape hatch: a dict keyed by table name whose
+      value replaces the generated description for that table. Our 117 lines of prose have
+      somewhere to live. <strong>Verify this early</strong> &mdash; the whole migration rests
+      on it, and the reference does not state whether it supplements or wholly replaces.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>What moves, what stays, what is still yours</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th style="width:17rem">Concern</th><th class="num">Lines today</th><th>After</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Tool-calling loop, retries, turn budget</td><td class="num">298</td>
+            <td>LangChain&rsquo;s, and better tested than mine</td><td class="verdict v-lc">replaced</td></tr>
+        <tr><td>Tool schemas</td><td class="num">82</td>
+            <td>From <code>SQLDatabaseToolkit</code></td><td class="verdict v-lc">replaced</td></tr>
+        <tr><td>Read-only guard + row cap</td><td class="num">102</td>
+            <td>Partly &mdash; they warn to scope permissions; the DB role is still yours</td><td class="verdict v-you">mostly kept</td></tr>
+        <tr><td>Schema prose naming the traps</td><td class="num">117</td>
+            <td>Moves into <code>custom_table_info</code>, unchanged</td><td class="verdict v-keep">kept</td></tr>
+        <tr><td>Composition pass &rarr; typed answer blocks</td><td class="num">~95</td>
+            <td>Not a LangChain concern</td><td class="verdict v-keep">kept</td></tr>
+        <tr><td>SSE contract the frontend consumes</td><td class="num">&mdash;</td>
+            <td><code>astream_events</code> emits their shape; you map it to ours</td><td class="verdict v-you">yours</td></tr>
+        <tr><td>Two warehouses in one answer</td><td class="num">&mdash;</td>
+            <td>One <code>SQLDatabase</code> per warehouse; you route</td><td class="verdict v-you">yours</td></tr>
+        <tr><td>Cost accounting per turn</td><td class="num">~60</td>
+            <td>Callback handler instead of our wrapper</td><td class="verdict v-you">rewritten</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Roughly <strong>380 lines deleted</strong>, <strong>310 kept</strong>, and two new
+    integration layers written. The loop is the cheap part; it is also the part that already
+    works and is measured.
+  </p>
+</section>
+
+<section>
+  <h2>The risks worth pricing before starting</h2>
+
+  <div class="panel bad">
+    <span class="label">1 · Async — the one that could sink it</span>
+    <p>
+      This stack is <code>asyncpg</code> end to end, inside an SSE generator. LangChain&rsquo;s
+      <code>SQLDatabase</code> is SQLAlchemy-based, so async means
+      <code>create_async_engine</code> and a different driver path, and any synchronous call
+      inside the request blocks the event loop for every other user. Unknown effort until
+      spiked. <strong>Resolve this first; everything else is moot if it is bad.</strong>
+    </p>
+  </div>
+
+  <div class="panel warn">
+    <span class="label">2 · Snowflake</span>
+    <p>
+      Adds <code>snowflake-sqlalchemy</code> on top of the connector we already use, and we
+      already fight Snowflake&rsquo;s SQL differences &mdash; no read-only transaction, no
+      <code>CHECK</code>, no <code>FILTER (WHERE …)</code>. A second abstraction over that
+      dialect is a second place for those to bite.
+    </p>
+  </div>
+
+  <div class="panel warn">
+    <span class="label">3 · Dependency weight and churn</span>
+    <p>
+      Eight direct dependencies today. This adds <code>langchain</code>,
+      <code>langchain-community</code>, <code>sqlalchemy</code> and a Snowflake dialect. And
+      the API moves: the canonical SQL-agent recipe was deprecated between versions, which is
+      exactly the maintenance we would be buying to avoid.
+    </p>
+  </div>
+
+  <div class="panel">
+    <span class="label">4 · What does not change</span>
+    <p>
+      Answer quality is set by the schema prose and the read-only role, and both survive the
+      move untouched. So the honest expected outcome is <em>the same answers, less of our
+      code, more of theirs</em> &mdash; not better answers.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>The plan</h2>
+  <p class="sub">
+    Four phases, each with a gate. The first is a day and answers the only question that
+    matters; stop there if it fails.
+  </p>
+
+  <h3>Phase 0 &mdash; spike, half a day to a day</h3>
+  <ul>
+    <li>One warehouse (Supabase MARKET), one question, behind a branch. No frontend work.</li>
+    <li>Prove <code>custom_table_info</code> carries the trap prose through to the model.</li>
+    <li>Prove an async SQLAlchemy engine works inside an async request without blocking.</li>
+    <li><strong>Gate:</strong> ask the churn question. If it answers 4.19%, the prose is not
+        reaching the model and the migration is off until it does.</li>
+  </ul>
+
+  <h3>Phase 1 &mdash; measure it, half a day and about $6</h3>
+  <ul>
+    <li>Point <code>scripts/acceptance.py</code> at the LangChain path with
+        <code>--cases data/market_truth_cases.json</code>.</li>
+    <li><strong>Gate:</strong> <strong>18 of 18</strong>, matching what we score today. The
+        harness, the ground truth and the cost accounting already exist &mdash; this is
+        precisely what they were built for.</li>
+  </ul>
+
+  <h3>Phase 2 &mdash; the integration layers, two to three days</h3>
+  <ul>
+    <li>Map <code>astream_events</code> onto the SSE contract, keeping
+        <code>conversation / step / answer / error / done</code> byte-identical &mdash; the
+        contract tests and the frontend both depend on it.</li>
+    <li>Keep the composition pass exactly as it is.</li>
+    <li>Re-implement cost accounting as a callback handler.</li>
+    <li><strong>Gate:</strong> the frontend renders traces with no change, and 104 tests pass.</li>
+  </ul>
+
+  <h3>Phase 3 &mdash; the second warehouse, one to two days</h3>
+  <ul>
+    <li>A second <code>SQLDatabase</code> for Snowflake; routing guidance moves into the
+        system prompt as it is today.</li>
+    <li><strong>Gate:</strong> <strong>14 of 14</strong> on the Snowflake set and
+        <strong>5 of 5</strong> on the cross-source cases, which are the ones that prove both
+        warehouses are genuinely in the path.</li>
+  </ul>
+
+  <div class="panel good">
+    <span class="label">Why the gates are cheap</span>
+    <p>
+      Every one is an existing command against existing ground truth. A rewrite of this kind
+      normally has no way to tell whether it broke something subtle; here, 32 questions with
+      warehouse-computed answers and a cost-instrumented runner will say so in about ten
+      minutes and $10.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>Recommendation</h2>
+  <div class="panel">
+    <span class="label">Do phase 0, then decide</span>
+    <p>
+      I would not commit to the migration now, and I would not rule it out. The loop works,
+      is measured at 53 of 53, and is not where the risk in this system lives. Replacing it
+      buys maintenance you do not currently owe, and the deprecation we just tripped over is
+      a reminder that the library&rsquo;s API is itself a maintenance cost.
+    </p>
+    <p>
+      But phase 0 is a day and settles the two real unknowns &mdash; whether the trap prose
+      survives <code>custom_table_info</code>, and whether async is workable. If both are
+      clean, this becomes a sound call whenever <code>engine.py</code> next needs real work.
+      If either is not, you have saved a week.
+    </p>
+    <p>
+      Reasons to move that this document cannot weigh, and that may outrank everything above:
+      the team already knows LangChain, you want its ecosystem, or you would rather maintain
+      configuration than a loop.
+    </p>
+  </div>
+</section>
+
+<footer>
+  Written against the LangChain documentation as of 3 September 2026 &mdash;
+  <a href="https://docs.langchain.com/oss/python/langchain/sql-agent">Build a SQL agent</a>,
+  <a href="https://reference.langchain.com/python/langchain-community/agent_toolkits/sql/base/create_sql_agent">create_sql_agent reference</a>
+  and
+  <a href="https://reference.langchain.com/python/langchain-community/utilities/sql_database/SQLDatabase">SQLDatabase reference</a>.
+  Nothing here is installed or built; the code is illustrative. Line counts are from this
+  repository. See also
+  <a href="demo-readiness.html">what is ready to demo</a>,
+  <a href="validation-questions.html">the validation questions</a>,
+  <a href="retrieval-study.html">the retrieval study</a> and
+  <a href="nextjs-to-fastapi.html">the migration reference</a>.
+</footer>
+
+</div>
+</body>
+</html>
